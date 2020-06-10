@@ -15,4 +15,7 @@ Some pages with strict Content-Security-Policy headers break `eval`, unfortunate
 
 Only tested in Firefox Mobile.
 
+### Development notes
+The coding style is "idiosyncratic" because I'm writing it entirely on my phone. Some compromises are made to keep the code short enough to fit in a bookmarklet as well.
+
 License: MIT
