@@ -32,23 +32,27 @@ ui.innerHTML = '<style>'+
 '#zzdnbtn, #zzupbtn { width:10vw; font-size:1em; text-align:center; }'+
 '#zzdnbtn { right:10vw; }'+
 '#zzupbtn { right:0; }'+
+'#zzsuggest { position:fixed; background:white; border:0.3vw solid black; bottom:6vw; left:50vw; overflow:auto; text-overflow:ellipsis; }'+
 '</style>'+
 '<textarea id="zzoutput" readonly="true"></textarea>'+
 '<div id="zzbar">'+
 '<input id="zzinput" type="text">'+
 '<input id="zzdnbtn" type="button" value="⬇">'+
 '<input id="zzupbtn" type="button" value="⬆">'+
-'</div>';
+'</div>'+
+'<div id="zzsuggest" hidden><\div>';
 
 document.body.appendChild(ui);
 var output = ui.querySelector("#zzoutput");
 var input = ui.querySelector("#zzinput");
 var upbtn = ui.querySelector("#zzupbtn");
 var dnbtn = ui.querySelector("#zzdnbtn");
+var suggest = ui.querySelector("#zzsuggest");
 zzdbg.output = output;
 zzdbg.input = input;
 zzdbg.upbtn = upbtn;
 zzdbg.dnbtn = dnbtn;
+zzdbg.suggest = suggest;
 
 
 zzdbg.do = function(cmd) {
@@ -61,27 +65,55 @@ output.value += "> "+cmd;
 
 try {
 if(".q" == cmd) return zzdbg.close();
-else if(".h" == cmd) res = "Commands: .q quit, .c clear, .d MDN doc, .s select element";
+else if(".h" == cmd) res = "Commands: .q quit, .c clear, .d MDN doc, .p list properties, .s select element";
 else if(/^\.d\b/.test(cmd)) res = docLookup(cmd.replace(/^\.d\s*/, ""));
-else if(".s" == cmd) res = zzdbg.selectElement(null, zzdbg.inspect);
+else if(/^\.p\b/.test(cmd)) res = zzdbg.properties(geval("("+cmd.replace(/^\.p\s*/, "")+")"));
+else if(".s" == cmd) res = zzdbg.selectElement(null, zzdbg.selectElementAction);
 else res = geval(cmd);
-}
-catch(e) { err = e; }
+} catch(e) { err = e; }
 
 zzdbg.log(err||res);
 if(".c" == cmd) output.value = "";
 
-output.scrollTop = output.scrollHeight;
 history.push({ cmd:cmd, res:res, err:err });
 };
 
-input.onkeydown = function(event){
-hpos = 0;
-if("Enter" != event.key) return;
+input.onkeyup = function(event){
 var cmd = input.value;
-if("" == input.value) return;
+hpos = 0;
+
+var pos = input.selectionEnd;
+var geval = eval;
+var term = cmd.slice(0, pos).match(/(\w+\.)*\w*$/);
+try {
+var base = term[0].replace(/\.?\w*$/, "") || "window";
+var part = term[0].replace(/^(\w+\.)*/, "");
+var compare = new Intl.Collator("en").compare;
+var props = term[0].length ? zzdbg.properties(geval("("+base+")")) : [];
+props = Array.prototype.concat.apply([], props).filter(function(prop){ return prop.startsWith(part) && prop != part; }).sort(compare);
+
+suggest.innerHTML = "";
+for(var i = 0; i < props.length; i++) {
+var item = document.createElement("div");
+item.textContent = props[i];
+suggest.appendChild(item);
+item.onclick = function() {
+input.value = input.value.slice(0, pos)+this.textContent.slice(part.length)+input.value.slice(pos);
+suggest.hidden = true;
+input.focus();
+input.selectionStart = input.selectionEnd = pos+(this.textContent.length-part.length);
+};
+}
+suggest.hidden = !props.length;
+suggest.style.width = suggest.scrollWidth+"px";
+suggest.style.height = "min(90vw, "+suggest.scrollHeight+"px)";
+} catch(e) { suggest.hidden = true; }
+
+if("Enter" != event.key) return;
+if("" == cmd) return;
 input.value = "";
 zzdbg.do(cmd);
+suggest.hidden = true;
 };
 
 
@@ -95,7 +127,7 @@ hpos += dir;
 if(hpos > history.length) hpos = history.length;
 if(hpos < 0) hpos = 0;
 input.value = hpos ? history.slice(-hpos)[0].cmd : "";
-input.selectionsStart = input.selectionEnd = input.value.length;
+input.selectionStart = input.selectionEnd = input.value.length;
 };
 
 
@@ -112,12 +144,17 @@ if("string" == typeof x) return x;
 if(depth >= zzdbg.stringifyDepth) return "...";
 if(depth >= 1 && "function" == typeof x) return "[function ...]";
 
+if(x instanceof Text) {
+x = x.textContent.replace(/^\s+|\s+$/g, "");
+if(!x) return '" "';
+}
+
 if("string" == typeof x) {
 if(/[^\w!@#$%^&*().:?\/\[\]{}~=+_ -]/.test(x)) return '"""'+x+'"""';
 return '"'+x+'"';
 }
 
-if(x instanceof NodeList || x instanceof NamedNodeMap || x instanceof StyleSheetList) x = Array.prototype.slice.call(x);
+if(x instanceof NodeList || x instanceof NamedNodeMap || x instanceof StyleSheetList || x instanceof HTMLCollection) x = Array.from(x);
 
 if(Array.isArray(x)) {
 if(depth >= zzdbg.stringifyDepth-1) return "[ ("+x.length+" item(s)) ]";
@@ -147,12 +184,6 @@ return "<"+attrs.join(" ")+">";
 }
 
 if(x instanceof Attr) return x.name+'="'+x.value+'"';
-
-if(x instanceof Text) {
-x = x.textContent.replace(/^\s+|\s+$/g, "");
-if(x) x = '"""'+x+'"""';
-else x = '" "';
-}
 
 var str = null;
 if(null === x || undefined === x) str = String(x);
@@ -198,7 +229,7 @@ if(!path || !path[0]) throw new Error();
 
 if("CSS2Properties" == path[0]) path[0] = "CSSStyleDeclaration";
 
-if(/^encode|^Object$|^Array$|^Number$|^BigInt$|^Math$|^Date$|^String$|^RegExp$|Error$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/"+path.join("/");
+if(/^encode|^Object$|^Array$|^Boolean$|^Number$|^BigInt$|^Math$|^Date$|^String$|^RegExp$|Error$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/"+path.join("/");
 else if(/^CSS|^DOM|^HTML|^Node|^NamedNode|^Attr$|^ChildNode$|^Document$|^URL$|^Window$|Event|Style|Element$|List$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/API/"+path.join("/");
 else url = "https://developer.mozilla.org/en-US/search?q="+path.join(".");
 
@@ -210,9 +241,19 @@ window.open(url, "_blank");
 return url;
 }
 
+zzdbg.properties = function(obj) {
+var descriptors = Object.getOwnPropertyDescriptors(obj);
+var results = [ Object.keys(descriptors) ];
+var proto = null;
+try { proto = obj.__proto__; }
+catch(e) {}
+if(proto) results =  results.concat(zzdbg.properties(proto));
+return results;
+};
+
 
 zzdbg.selectElement = function(root, callback) {
-if(!root) root = document.body;
+if(!root) root = document;
 var result = { elem: null, callback: callback };
 root.addEventListener("click", listener, true);
 return result;
@@ -229,12 +270,13 @@ zzdbg.log = zzdbg.warn = zzdbg.info = zzdbg.error = function zzdbg_log(args) {
 if(output.value) output.value +="\n";
 try { output.value += Array.from(arguments, function(arg) { return stringify(arg, 0); }).join(", "); }
 catch(e) { output.value += e+" (zzdbg.stringify)"; }
+output.scrollTop = output.scrollHeight;
 };
 oldconsole.log = oldconsole.warn = oldconsole.info = oldconsole.error = zzdbg.log;
 exchange(oldconsole, console);
 
 
-zzdbg.inspect = function(elem) {
+zzdbg.inspect = zzdbg.selectElementAction = function(elem) {
 zzdbg.log(elem, zzdbg.cssRules(elem));
 };
 zzdbg.cssRules = function(elem) {
