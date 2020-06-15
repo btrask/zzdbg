@@ -5,6 +5,7 @@ var ui = document.createElement("div");
 var history = [];
 var hpos = 0;
 var oldconsole = {};
+var geval = eval;
 
 if(window.zzdbg) {
 history = window.zzdbg.history || history;
@@ -32,7 +33,8 @@ ui.innerHTML = '<style>'+
 '#zzdnbtn, #zzupbtn { width:10vw; font-size:1em; text-align:center; }'+
 '#zzdnbtn { right:10vw; }'+
 '#zzupbtn { right:0; }'+
-'#zzsuggest { position:fixed; background:white; border:0.3vw solid black; bottom:6vw; left:50vw; overflow:auto; text-overflow:ellipsis; }'+
+'#zzsuggest { position:fixed; background:white; border:0.3vw solid black; bottom:5vw; right:25vw; overflow:hidden auto; text-overflow:ellipsis; }'+
+'#zzsuggest > * { padding:0.5vw 2vw; }'+
 '</style>'+
 '<textarea id="zzoutput" readonly="true"></textarea>'+
 '<div id="zzbar">'+
@@ -56,7 +58,6 @@ zzdbg.suggest = suggest;
 
 
 zzdbg.do = function(cmd) {
-var geval = eval;
 var res = null;
 var err = null;
 window._ = history.length ? history.slice(-1)[0].res : undefined;
@@ -74,7 +75,6 @@ else res = geval(cmd);
 
 zzdbg.log(err||res);
 if(".c" == cmd) output.value = "";
-
 history.push({ cmd:cmd, res:res, err:err });
 };
 
@@ -83,7 +83,6 @@ var cmd = input.value;
 hpos = 0;
 
 var pos = input.selectionEnd;
-var geval = eval;
 var term = cmd.slice(0, pos).match(/(\w+\.)*\w*$/);
 try {
 var base = term[0].replace(/\.?\w*$/, "") || "window";
@@ -106,7 +105,7 @@ input.selectionStart = input.selectionEnd = pos+(this.textContent.length-part.le
 }
 suggest.hidden = !props.length;
 suggest.style.width = suggest.scrollWidth+"px";
-suggest.style.height = "min(90vw, "+suggest.scrollHeight+"px)";
+suggest.style.height = Math.min(suggest.scrollHeight, window.innerHeight*.75)+"px";
 } catch(e) { suggest.hidden = true; }
 
 if("Enter" != event.key) return;
@@ -216,7 +215,6 @@ return null;
 function docLookup(str) {
 var url = null;
 try {
-var geval = eval;
 var path = null;
 if("" === str) return "Usage: .d expr";
 if("null" == str || "undefined" == str) path = [str];
