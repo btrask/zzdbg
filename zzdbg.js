@@ -63,7 +63,7 @@ try {
 if(".q" == cmd) return zzdbg.close();
 else if(".h" == cmd) res = "Commands: .q quit, .c clear, .d MDN doc, .s select element";
 else if(/^\.d\b/.test(cmd)) res = docLookup(cmd.replace(/^\.d\s*/, ""));
-else if(".s" == cmd) res = zzdbg.selectElement(null, zzdbg.log);
+else if(".s" == cmd) res = zzdbg.selectElement(null, zzdbg.inspect);
 else res = geval(cmd);
 }
 catch(e) { err = e; }
@@ -102,6 +102,8 @@ input.selectionsStart = input.selectionEnd = input.value.length;
 zzdbg.stringify = null;
 zzdbg.stringifyDepth = 3;
 function stringify(x, depth) {
+if(undefined === depth) throw new Error("stringify depth");
+
 if(zzdbg.stringify) {
 x = zzdbg.stringify(x, depth);
 if("string" == typeof x) return x;
@@ -115,15 +117,22 @@ if(/[^\w!@#$%^&*().:?\/\[\]{}~=+_ -]/.test(x)) return '"""'+x+'"""';
 return '"'+x+'"';
 }
 
-if(x instanceof NodeList || x instanceof NamedNodeMap) x = Array.prototype.slice.call(x);
+if(x instanceof NodeList || x instanceof NamedNodeMap || x instanceof StyleSheetList) x = Array.prototype.slice.call(x);
 
 if(Array.isArray(x)) {
 if(depth >= zzdbg.stringifyDepth-1) return "[ ("+x.length+" item(s)) ]";
 return "[ "+x.map(function(y) { return stringify(y, depth+1); }).join(", ")+" ]";
 }
 
-try { if(x instanceof CSSStyleDeclaration) return "{ "+Array.prototype.slice.call(x).filter(function(field){ return undefined !== x[field]; }).map(function(field){ return field+': "'+x[field]+'"'; }).join(";\n")+" }"; }
-catch(e) {}
+try {
+if(x instanceof CSSStyleSheet) return stringify(x.cssRules, depth);
+if(x instanceof CSSRuleList) {
+if(depth >= 1) return "["+x.length+" CSS rule(s)]";
+return Array.from(x, function(rule) { return stringify(rule, depth+1); }).join("\n");
+}
+if(x instanceof CSSRule) return x.cssText;
+if(x instanceof CSSStyleDeclaration) return "{ "+x.cssText+" }";
+} catch(e) { if(!(e instanceof SecurityError)) throw e; }
 
 function url_summary(url) {
 return url.replace(/^.*\//, "...");
@@ -190,7 +199,7 @@ if(!path || !path[0]) throw new Error();
 if("CSS2Properties" == path[0]) path[0] = "CSSStyleDeclaration";
 
 if(/^encode|^Object$|^Array$|^Number$|^BigInt$|^Math$|^Date$|^String$|^RegExp$|Error$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/"+path.join("/");
-else if(/^CSS|^DOM|^HTML|^Node|^NamedNode|^Attr$|^ChildNode$|^Document$|^URL$|^Window$|Event|Element$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/API/"+path.join("/");
+else if(/^CSS|^DOM|^HTML|^Node|^NamedNode|^Attr$|^ChildNode$|^Document$|^URL$|^Window$|Event|Style|Element$|List$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/API/"+path.join("/");
 else url = "https://developer.mozilla.org/en-US/search?q="+path.join(".");
 
 } catch(e) {
@@ -218,11 +227,29 @@ if(result.callback) result.callback(result.elem);
 
 zzdbg.log = zzdbg.warn = zzdbg.info = zzdbg.error = function zzdbg_log(args) {
 if(output.value) output.value +="\n";
-try { output.value += Array.from(arguments, function(arg) { return stringify(arg, 0); }).join(" "); }
+try { output.value += Array.from(arguments, function(arg) { return stringify(arg, 0); }).join(", "); }
 catch(e) { output.value += e+" (zzdbg.stringify)"; }
 };
 oldconsole.log = oldconsole.warn = oldconsole.info = oldconsole.error = zzdbg.log;
 exchange(oldconsole, console);
+
+
+zzdbg.inspect = function(elem) {
+zzdbg.log(elem, zzdbg.cssRules(elem));
+};
+zzdbg.cssRules = function(elem) {
+var results = [];
+var sheets = document.styleSheets;
+for(var i = 0; i < sheets.length; i++) {
+var rules = sheets[i].cssRules;
+for(var j = 0; j < rules.length; j++) {
+var matches = false;
+try { matches = elem.matches(rules[j].selectorText); } catch(e) { if(!(e instanceof SyntaxError)) throw e; }
+if(matches) results.push(rules[j]);
+}
+}
+return results;
+};
 
 
 zzdbg.wgetcmd = function(dls) {
