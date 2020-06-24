@@ -15,7 +15,7 @@ zzdbg is a simple but relatively powerful web and Javascript debugger that loads
 [object Window]
 
 // DOM elements are printed nicely
-> document.querySelector("#main')
+> document.querySelector("#main")
 <div id="main">
 
 // View source of first script in page
