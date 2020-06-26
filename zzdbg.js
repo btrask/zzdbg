@@ -23,36 +23,36 @@ delete window.zzdbg;
 };
 zzdbg.ui = ui;
 
-ui.id = "zzdbgui";
+ui.className = "zzdbgui";
 ui.innerHTML = '<style>'+
-'#zzdbgui { position: fixed; left:0; right:0; bottom:0; height:40%; z-index:100000000; }'+
-'#zzdbgui, #zzdbgui * { font-size:3vw; margin:0; padding:0; border-radius:0; }'+
-'#zzdbgui textarea, #zzdbgui input { position:absolute; background-color:white; color:black; border:0.3vw solid black !important; box-sizing:border-box; font-family:monospace; padding:0 1vw; }'+
-'#zzoutput { left:0; top:0; width:100%; height:calc(100% - 6vw); overflow-y:auto; white-space:pre-wrap; }'+
-'#zzbar { position:absolute; left:0; bottom:0; width:100%; height:6vw; }'+
-'#zzbar * { top:0; height:100%; }'+
-'#zzinput { position:absolute; left:0; width:calc(100% - 20vw); }'+
-'#zzdnbtn, #zzupbtn { width:10vw; font-size:1em; text-align:center; }'+
-'#zzdnbtn { right:10vw; }'+
-'#zzupbtn { right:0; }'+
-'#zzsuggest { position:fixed; background:white; border:0.3vw solid black; bottom:5vw; right:25vw; overflow:hidden auto; text-overflow:ellipsis; }'+
-'#zzsuggest > * { padding:0.5vw 2vw; }'+
+'.zzdbgui { position: fixed; left:0; right:0; bottom:0; height:40%; z-index:100000000; }'+
+'.zzdbgui, .zzdbgui * { font-size:3vw; margin:0; padding:0; border-radius:0; }'+
+'.zzdbgui textarea, .zzdbgui input { position:absolute; background-color:white; color:black; border:0.3vw solid black !important; box-sizing:border-box; font-family:monospace; padding:0 1vw; }'+
+'.zzoutput { left:0; top:0; width:100%; height:calc(100% - 6vw); overflow-y:auto; white-space:pre-wrap; }'+
+'.zzbar { position:absolute; left:0; bottom:0; width:100%; height:6vw; }'+
+'.zzbar * { top:0; height:100%; }'+
+'.zzinput { position:absolute; left:0; width:calc(100% - 20vw); }'+
+'.zzdnbtn, .zzupbtn { width:10vw; font-size:1em; text-align:center; }'+
+'.zzdnbtn { right:10vw; }'+
+'.zzupbtn { right:0; }'+
+'.zzsuggest { position:fixed; background:white; border:0.3vw solid black; bottom:5vw; right:25vw; overflow:hidden auto; text-overflow:ellipsis; }'+
+'.zzsuggest > * { padding:0.5vw 2vw; }'+
 '</style>'+
-'<textarea id="zzoutput" readonly="true"></textarea>'+
-'<div id="zzbar">'+
-'<input id="zzinput" type="text">'+
-'<input id="zzdnbtn" type="button" value="⬇">'+
-'<input id="zzupbtn" type="button" value="⬆">'+
+'<textarea class="zzoutput" readonly="true"></textarea>'+
+'<div class="zzbar">'+
+'<input class="zzinput" type="text">'+
+'<input class="zzdnbtn" type="button" value="⬇">'+
+'<input class="zzupbtn" type="button" value="⬆">'+
 '</div>'+
-'<div id="zzsuggest" hidden><\div>';
+'<div class="zzsuggest" hidden><\div>';
 
 document.body.appendChild(spacer);
 document.body.appendChild(ui);
-var output = ui.querySelector("#zzoutput");
-var input = ui.querySelector("#zzinput");
-var upbtn = ui.querySelector("#zzupbtn");
-var dnbtn = ui.querySelector("#zzdnbtn");
-var suggest = ui.querySelector("#zzsuggest");
+var output = ui.querySelector(".zzoutput");
+var input = ui.querySelector(".zzinput");
+var upbtn = ui.querySelector(".zzupbtn");
+var dnbtn = ui.querySelector(".zzdnbtn");
+var suggest = ui.querySelector(".zzsuggest");
 zzdbg.output = output;
 zzdbg.input = input;
 zzdbg.upbtn = upbtn;
