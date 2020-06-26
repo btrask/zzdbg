@@ -142,7 +142,7 @@ if(undefined === depth) throw new Error("stringify depth");
 
 if(zzdbg.stringify) {
 x = zzdbg.stringify(x, depth);
-if("string" == typeof x) return x;
+if(isString(x)) return x;
 }
 
 if(depth >= zzdbg.stringifyDepth) return "…";
@@ -153,7 +153,7 @@ x = x.textContent.replace(/^\s+|\s+$/g, "");
 if(!x) return '" "';
 }
 
-if("string" == typeof x) {
+if(isString(x)) {
 if(depth >= 1) return JSON.stringify(x);
 if(/[^\w!@#$%^&*(),.:?\/\[\]{}~=+_ -]/.test(x)) return '"""'+x+'"""';
 return '"'+x+'"';
@@ -196,7 +196,7 @@ try { if(null === str && x.__proto__ && "function" == typeof x.__proto__.toStrin
 } catch(e){}
 if(null === str) str = Object.prototype.toString.call(x);
 
-if(("string" != typeof x) && "[object Object]" == str) return "{ "+Object.keys(x).map(function(key) { return key+": "+zzdbg.stringifyFull(x[key], depth+1); }).join(", ")+" }";
+if(!isString(x) && "[object Object]" == str) return "{ "+Object.keys(x).map(function(key) { return key+": "+zzdbg.stringifyFull(x[key], depth+1); }).join(", ")+" }";
 
 return str;
 };
@@ -234,7 +234,7 @@ if(!path || !path[0]) throw new Error();
 if("CSS2Properties" == path[0]) path[0] = "CSSStyleDeclaration";
 
 if(/^encode|^Object$|^Array$|^Boolean$|^Number$|^BigInt$|^Math$|^Date$|^String$|^RegExp$|Error$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/"+path.join("/");
-else if(/^CSS|^DOM|^HTML|^Node|^NamedNode|^Attr$|^ChildNode$|^Document$|^URL$|^Window$|Event|Style|Element$|List$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/API/"+path.join("/");
+else if(/^CSS|^DOM|^HTML|^Node|^NamedNode|^RTC|^Attr$|^ChildNode$|^Document$|^IDBFactory$|^URL$|^Window$|Event|Style|Element$|List$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/API/"+path.join("/");
 else url = "https://developer.mozilla.org/en-US/search?q="+path.join(".");
 
 } catch(e) {
@@ -321,7 +321,7 @@ return str;
 
 zzdbg.wgetcmd = function(dls) {
 if(!Array.isArray(dls)) dls = toArray(arguments);
-return dls.map(function(dl){ return "wget --adjust-extension " + ("string" == typeof dl ? safe_shell_arg(dl) : safe_shell_arg(dl.url)+" -O '"+safe_filename(dl.filename)+"'"); }).join("; ");
+return dls.map(function(dl){ return "wget --adjust-extension " + (isString(dl) ? safe_shell_arg(dl) : safe_shell_arg(dl.url)+" -O '"+safe_filename(dl.filename)+"'"); }).join("; ");
 };
 function safe_shell_arg(shell_arg) {
 return "'"+shell_arg.replace(/\'/g, "\\'")+"'";
@@ -337,8 +337,8 @@ var a = document.createElement("a");
 ui.appendChild(a);
 /*a.target = "_blank";*/
 for(var i = 0; i < dls.length; i++) {
-a.download = ("string" == typeof dls[i] ? "" : dls[i].filename);
-a.href = ("string" == typeof dls[i] ? dls[i] : dls[i].url);
+a.download = (isString(dls[i]) ? "" : dls[i].filename);
+a.href = (isString(dls[i]) ? dls[i] : dls[i].url);
 a.click();
 }
 a.remove();
@@ -368,6 +368,9 @@ b[prop] = swap;
 }
 function toArray(x) {
 return Array.prototype.slice.call(x);
+}
+function isString(x) {
+return "string" == typeof x || x instanceof String;
 }
 function escapeHTML(str) {
 var x = document.createElement("div");
