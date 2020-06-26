@@ -63,7 +63,6 @@ zzdbg.suggest = suggest;
 zzdbg.do = function(cmd) {
 var res = null;
 var err = null;
-window._ = history.length ? history.slice(-1)[0].res : undefined;
 if(output.value) output.value += "\n";
 output.value += "> "+cmd;
 
@@ -73,7 +72,7 @@ else if(".q" == cmd) return zzdbg.close();
 else if(/^\.o\b/.test(cmd)) res = zzdbg.open(geval("("+cmd.replace(/^\.o\s*/, "")+")"));
 else if(/^\.d\b/.test(cmd)) res = docLookup(cmd.replace(/^\.d\s*/, ""));
 else if(/^\.p\b/.test(cmd)) res = zzdbg.properties(geval("("+cmd.replace(/^\.p\s*/, "")+")"));
-else if(".s" == cmd) res = zzdbg.selectElement(null, zzdbg.selectElementAction);
+else if(".s" == cmd) res = selectElement();
 else res = geval(cmd);
 } catch(e) { err = e; }
 
@@ -155,7 +154,7 @@ if(!x) return '" "';
 
 if(isString(x)) {
 if(depth >= 1) return JSON.stringify(x);
-if(/[^\w!@#$%^&*(),.:?\/\[\]{}~=+_ -]/.test(x)) return '"""'+x+'"""';
+if(/[^\w!@#$%^&*(),.…:?\/\[\]{}~=+_ -]/.test(x)) return '"""'+x+'"""';
 return '"'+x+'"';
 }
 
@@ -258,17 +257,25 @@ return results;
 
 zzdbg.selectElement = function(root, callback) {
 if(!root) root = document;
-var result = { elem: null, callback: callback };
 root.addEventListener("click", listener, true);
-return result;
 function listener(event) {
 event.preventDefault();
 event.stopPropagation();
 root.removeEventListener("click", listener, true);
-result.elem = event.target;
-if(result.callback) result.callback(result.elem);
+if(callback) callback(event.target);
 }
 };
+zzdbg.lastSelectedElement = null;
+function selectElement() {
+zzdbg.selectElement(null, function(elem) {
+zzdbg.selectElementAction(elem);
+var h = history[history.length-1];
+if(h && ".s" == h.cmd) { h.res = elem; window._ = elem; }
+zzdbg.lastSelectedElement = elem;
+});
+return "Waiting for click…";
+}
+
 
 zzdbg.log = zzdbg.warn = zzdbg.info = zzdbg.error = function zzdbg_log(args) {
 if(output.value) output.value +="\n";
