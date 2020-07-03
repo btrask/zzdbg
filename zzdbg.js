@@ -25,17 +25,17 @@ zzdbg.ui = ui;
 
 ui.className = "zzdbgui";
 ui.innerHTML = '<style>'+
-'.zzdbgui { position: fixed; left:0; right:0; bottom:0; height:40%; z-index:100000000; }'+
-'.zzdbgui, .zzdbgui * { font-size:3vw; margin:0; padding:0; border-radius:0; }'+
-'.zzdbgui textarea, .zzdbgui input { position:absolute; background-color:white; color:black; border:0.3vw solid black !important; box-sizing:border-box; font-family:monospace; padding:0 1vw; }'+
-'.zzoutput { left:0; top:0; width:100%; height:calc(100% - 6vw); overflow-y:auto; white-space:pre-wrap; }'+
+'.zzdbgui, .zzdbgui * { font-family:monospace; font-size:3vw; margin:0; padding:0; box-sizing:border-box; border-radius:0; background-color:white; color:black; }'+
+'.zzdbgui { position:fixed; left:0; bottom:0; width:100%; height:40%; z-index:100000000; }'+
+'.zzdbgui textarea, .zzdbgui input { border:0.3vw solid black !important; padding:0 1vw; }'+
+'.zzoutput { position:absolute; left:0; top:0; width:100%; height:calc(100% - 6vw); overflow-y:auto; white-space:pre-wrap; }'+
 '.zzbar { position:absolute; left:0; bottom:0; width:100%; height:6vw; }'+
-'.zzbar * { top:0; height:100%; }'+
-'.zzinput { position:absolute; left:0; width:calc(100% - 20vw); }'+
+'.zzbar * { position:absolute; top:0; height:100%; }'+
+'.zzinput { left:0; width:calc(100% - 20vw); }'+
 '.zzdnbtn, .zzupbtn { width:10vw; font-size:1em; text-align:center; }'+
 '.zzdnbtn { right:10vw; }'+
 '.zzupbtn { right:0; }'+
-'.zzsuggest { position:fixed; background:white; border:0.3vw solid black; bottom:5vw; right:25vw; overflow:hidden auto; text-overflow:ellipsis; }'+
+'.zzsuggest { position:fixed; bottom:5vw; right:25vw; border:0.3vw solid black; overflow:hidden auto; text-overflow:ellipsis; }'+
 '.zzsuggest > * { padding:0.5vw 2vw; }'+
 '</style>'+
 '<textarea class="zzoutput" readonly="true"></textarea>'+
@@ -233,7 +233,7 @@ if(!path || !path[0]) throw new Error();
 if("CSS2Properties" == path[0]) path[0] = "CSSStyleDeclaration";
 
 if(/^encode|^Object$|^Array$|^Boolean$|^Number$|^BigInt$|^Math$|^Date$|^String$|^RegExp$|Error$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/"+path.join("/");
-else if(/^CSS|^DOM|^HTML|^Node|^NamedNode|^RTC|^Attr$|^ChildNode$|^Document$|^IDBFactory$|^URL$|^Window$|Event|Style|Element$|List$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/API/"+path.join("/");
+else if(/^CSS|^DOM|^HTML|^Node|^NamedNode|^RTC|^XML|^Attr$|^ChildNode$|^Document$|^IDBFactory$|^URL$|^Window$|Event|Style|Element$|List$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/API/"+path.join("/");
 else url = "https://developer.mozilla.org/en-US/search?q="+path.join(".");
 
 } catch(e) {
