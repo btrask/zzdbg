@@ -1,6 +1,6 @@
-javascript:(function(){/*ZZDBG*/
+(function zzdbg_run(w, host){
 
-var w = window;
+host = host || w;
 var d = w.document;
 var zzdbg = {};
 var spacer = d.createTextNode("\n".repeat(10));
@@ -8,11 +8,10 @@ var ui = d.createElement("div");
 var history = [];
 var hpos = 0;
 var oldconsole = {};
-var geval = eval;
 
-if(/^zzdbg-editor/.test(w.name)) {
+/*if(/^zzdbg-editor/.test(w.name)) {
 return becomeEditorWindow(w);
-}
+}*/
 if(w.zzdbg) {
 history = w.zzdbg.history || history;
 w.zzdbg.close();
@@ -74,11 +73,11 @@ output.value += "> "+cmd;
 try {
 if(".h" == cmd) res = zzdbg.doc;
 else if(".q" == cmd) return zzdbg.close();
-else if(/^\.o\b/.test(cmd)) res = zzdbg.open(geval("("+cmd.replace(/^\.o\s*/, "")+")"));
+else if(/^\.o\b/.test(cmd)) res = zzdbg.open(zzdbg.evalLocal("("+cmd.replace(/^\.o\s*/, "")+")"));
 else if(/^\.d\b/.test(cmd)) res = docLookup(cmd.replace(/^\.d\s*/, ""));
-else if(/^\.p\b/.test(cmd)) res = zzdbg.properties(geval("("+cmd.replace(/^\.p\s*/, "")+")"));
+else if(/^\.p\b/.test(cmd)) res = zzdbg.properties(zzdbg.evalLocal("("+cmd.replace(/^\.p\s*/, "")+")"));
 else if(".s" == cmd) res = selectElement();
-else res = geval(cmd.replace(/^javascript:/, ""));
+else res = zzdbg.evalLocal(cmd.replace(/^javascript:/, ""));
 } catch(e) { err = e; }
 
 zzdbg.log(err||res);
@@ -97,7 +96,7 @@ try {
 var base = term[0].replace(/\.?[\w$]*$/, "") || "window";
 var part = term[0].replace(/^([\w$]+\.)*/, "");
 var compare = new Intl.Collator("en").compare;
-var props = term[0].length ? zzdbg.properties(geval("("+base+")")) : [];
+var props = term[0].length ? zzdbg.properties(zzdbg.evalLocal("("+base+")")) : [];
 props = Array.prototype.concat.apply([], props).filter(function(prop){ return prop.startsWith(part) && prop != part; }).sort(compare);
 
 suggest.innerHTML = "";
@@ -229,7 +228,7 @@ var path = null;
 if("" === str) return "Usage: .d expr";
 if("null" == str || "undefined" == str) path = [str];
 else {
-var x = geval("("+str+")");
+var x = zzdbg.evalLocal("("+str+")");
 if(null === x || undefined === x) throw new Error();
 path = findprop(w, x, 2);
 }
@@ -375,6 +374,17 @@ a.remove();
 };
 
 
+zzdbg.loader = null;
+zzdbg.script = null;
+zzdbg.bookmarklet = function() {
+var src = 'javascript:('+zzdbg.loader.toString()+')('+JSON.stringify(zzdbg.script.textContent)+')/*END*/';
+return zzdbg.viewAsSource(src);
+};
+zzdbg.edit = function() {
+return zzdbg.viewAsSource(zzdbg.script.textContent);
+};
+
+
 zzdbg.doc = "Commands:"+
 "\n\t.h - help"+
 "\n\t.q - quit"+
@@ -423,10 +433,37 @@ if(has(x, "err")) throw x.err;
 return x.res;
 }
 zzdbg.evalItems = [];
-try { geval('"test"'); }
-catch(e) { geval = eval2; zzdbg.log(e); zzdbg.log("Warning: zzdbg is running without eval(). Please wrap statements in braces: { var x; }. Expressions can be run as normal: func()."); }
-zzdbg.eval = geval;
+zzdbg.evalLocal = eval;
+try { zzdbg.evalLocal('"test"'); }
+catch(e) {
+zzdbg.evalLocal = eval2;
+if(w == host) { zzdbg.log(e); zzdbg.log("Warning: zzdbg is running without eval(). Please wrap statements in braces: { var x; }. Expressions can be run as normal: func()."); }
+}
+
+
+zzdbg.eval = function(cmd, cb) {
+var err = null, res = null;
+try { res = zzdbg.evalLocal(cmd); }
+catch(e) { err = e; }
+setTimeout(function() { cb(err, res); }, 0);
+};
+if(w != host) {
+zzdbg.log("Note: zzdbg is running as an editor. Javascript commands will be executed in the host window.");
+zzdbg.eval = function(src, cb) {
+var n = zzdbg.evalItems.length;
+zzdbg.evalItems[n] = { cb: cb };
+host.postMessage({"zzdbg-eval": true, "zzdbg-cmd", cmd, "zzdbg-id": n}, "*");
+};
+window.addEventListener("message", function(ev) {
+var obj = ev.data;
+/* TODO: check window! */
+if(!obj["zzdbg-eval"]) return;
+var n = obj["zzdbg-id"];
+zzdbg.evalItems[n](obj["zzdbg-err"], obj["zzdbg-res"]);
+delete zzdbg.evalItems[n];
+}, true);
+}
 
 
 input.focus();
-})()/*END*/
+})(window);
