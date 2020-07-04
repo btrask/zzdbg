@@ -452,7 +452,7 @@ zzdbg.log("Note: zzdbg is running as an editor. Javascript commands will be exec
 zzdbg.eval = function(src, cb) {
 var n = zzdbg.evalItems.length;
 zzdbg.evalItems[n] = { cb: cb };
-host.postMessage({"zzdbg-eval": true, "zzdbg-cmd", cmd, "zzdbg-id": n}, "*");
+host.postMessage({"zzdbg-eval": true, "zzdbg-cmd": cmd, "zzdbg-id": n}, "*");
 };
 window.addEventListener("message", function(ev) {
 var obj = ev.data;
