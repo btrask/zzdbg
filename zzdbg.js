@@ -1,31 +1,36 @@
 javascript:(function(){/*ZZDBG*/
 
+var w = window;
+var d = w.document;
 var zzdbg = {};
-var spacer = document.createTextNode("\n".repeat(10));
-var ui = document.createElement("div");
+var spacer = d.createTextNode("\n".repeat(10));
+var ui = d.createElement("div");
 var history = [];
 var hpos = 0;
 var oldconsole = {};
 var geval = eval;
 
-if(window.zzdbg) {
-history = window.zzdbg.history || history;
-window.zzdbg.close();
+if(/^zzdbg-editor/.test(w.name)) {
+return becomeEditorWindow(w);
 }
-window.zzdbg = zzdbg;
+if(w.zzdbg) {
+history = w.zzdbg.history || history;
+w.zzdbg.close();
+}
+w.zzdbg = zzdbg;
 zzdbg.history = history;
 
 zzdbg.close = function() {
 exchange(oldconsole, console);
 spacer.remove();
 ui.remove();
-delete window.zzdbg;
+delete w.zzdbg;
 };
 zzdbg.ui = ui;
 
 ui.className = "zzdbgui";
 ui.innerHTML = '<style>'+
-'.zzdbgui, .zzdbgui * { font-family:monospace; font-size:3vw; margin:0; padding:0; box-sizing:border-box; border-radius:0; background-color:white; color:black; }'+
+'.zzdbgui, .zzdbgui * { font-family:monospace; font-size:3vw; margin:0 !important; padding:0 !important; box-sizing:border-box; border-radius:0; background-color:white; color:black; }'+
 '.zzdbgui { position:fixed; left:0; bottom:0; width:100%; height:40%; z-index:100000000; }'+
 '.zzdbgui textarea, .zzdbgui input { border:0.3vw solid black !important; padding:0 1vw; }'+
 '.zzoutput { position:absolute; left:0; top:0; width:100%; height:calc(100% - 6vw); overflow-y:auto; white-space:pre-wrap; }'+
@@ -46,8 +51,8 @@ ui.innerHTML = '<style>'+
 '</div>'+
 '<div class="zzsuggest" hidden><\div>';
 
-document.body.appendChild(spacer);
-document.body.appendChild(ui);
+d.body.appendChild(spacer);
+d.body.appendChild(ui);
 var output = ui.querySelector(".zzoutput");
 var input = ui.querySelector(".zzinput");
 var upbtn = ui.querySelector(".zzupbtn");
@@ -73,13 +78,13 @@ else if(/^\.o\b/.test(cmd)) res = zzdbg.open(geval("("+cmd.replace(/^\.o\s*/, ""
 else if(/^\.d\b/.test(cmd)) res = docLookup(cmd.replace(/^\.d\s*/, ""));
 else if(/^\.p\b/.test(cmd)) res = zzdbg.properties(geval("("+cmd.replace(/^\.p\s*/, "")+")"));
 else if(".s" == cmd) res = selectElement();
-else res = geval(cmd);
+else res = geval(cmd.replace(/^javascript:/, ""));
 } catch(e) { err = e; }
 
 zzdbg.log(err||res);
 if(".c" == cmd) output.value = "";
 history.push({ cmd:cmd, res:res, err:err });
-window._ = res;
+w._ = res;
 };
 
 input.onkeyup = function(event){
@@ -97,7 +102,7 @@ props = Array.prototype.concat.apply([], props).filter(function(prop){ return pr
 
 suggest.innerHTML = "";
 for(var i = 0; i < props.length; i++) {
-var item = document.createElement("div");
+var item = d.createElement("div");
 item.textContent = props[i];
 suggest.appendChild(item);
 item.onclick = function() {
@@ -109,7 +114,7 @@ input.selectionStart = input.selectionEnd = pos+(this.textContent.length-part.le
 }
 suggest.hidden = !props.length;
 suggest.style.width = suggest.scrollWidth+"px";
-suggest.style.height = Math.min(suggest.scrollHeight, window.innerHeight*.75)+"px";
+suggest.style.height = Math.min(suggest.scrollHeight, w.innerHeight*.75)+"px";
 } catch(e) { suggest.hidden = true; }
 
 if("Enter" != event.key) return;
@@ -154,7 +159,7 @@ if(!x) return '" "';
 
 if(isString(x)) {
 if(depth >= 1) return JSON.stringify(x);
-if(/[^\w!@#$%^&*(),.…:?\/\[\]{}~=+_ -]/.test(x)) return '"""'+x+'"""';
+if(/[^\w!@#$%^&*(),.…:;?\/\[\]{}~=+_ -]/.test(x)) return '"""'+x+'"""';
 return '"'+x+'"';
 }
 
@@ -207,7 +212,7 @@ if(!obj) return null;
 var descriptors = Object.getOwnPropertyDescriptors(obj);
 
 for(var name in descriptors) {
-if(obj === window && descriptors[name].enumerable) continue;
+if(obj === w && descriptors[name].enumerable) continue;
 var val = descriptors[name].value;
 if("function" != typeof val) continue;
 if(prop.constructor === val && Function != val) return [name];
@@ -226,7 +231,7 @@ if("null" == str || "undefined" == str) path = [str];
 else {
 var x = geval("("+str+")");
 if(null === x || undefined === x) throw new Error();
-path = findprop(window, x, 2);
+path = findprop(w, x, 2);
 }
 if(!path || !path[0]) throw new Error();
 
@@ -256,7 +261,7 @@ return results;
 
 
 zzdbg.selectElement = function(root, callback) {
-if(!root) root = document;
+if(!root) root = d;
 root.addEventListener("click", listener, true);
 function listener(event) {
 event.preventDefault();
@@ -270,7 +275,7 @@ function selectElement() {
 zzdbg.selectElement(null, function(elem) {
 zzdbg.selectElementAction(elem);
 var h = history[history.length-1];
-if(h && ".s" == h.cmd) { h.res = elem; window._ = elem; }
+if(h && ".s" == h.cmd) { h.res = elem; w._ = elem; }
 zzdbg.lastSelectedElement = elem;
 });
 return "Waiting for click…";
@@ -292,7 +297,7 @@ zzdbg.log(elem, zzdbg.cssRules(elem));
 };
 zzdbg.cssRules = function(elem) {
 var results = [];
-var sheets = document.styleSheets;
+var sheets = d.styleSheets;
 for(var i = 0; i < sheets.length; i++) {
 var rules = sheets[i].cssRules;
 for(var j = 0; j < rules.length; j++) {
@@ -306,24 +311,42 @@ return results;
 
 
 zzdbg.open = function(obj) {
-if(obj.href) obj = obj.href;
-else if(obj.src) obj = obj.src;
-else if(obj instanceof HTMLScriptElement || obj instanceof HTMLStyleElement) obj = zzdbg.viewAsSourceURL(obj.textContent);
-else if(obj instanceof CSSStyleSheet) obj = zzdbg.viewAsSourceURL(obj.ownerNode.textContent);
-zzdbg.openWindow(obj);
-return obj;
+var url = null;
+if(obj.href) url = obj.href;
+else if(obj.src) url = obj.src;
+else if(obj instanceof HTMLScriptElement || obj instanceof HTMLStyleElement) return zzdbg.viewAsSource(obj.textContent, zzdbg.stringifyFull(obj, 0));
+else if(obj instanceof CSSStyleSheet) return zzdbg.viewAsSource(obj.ownerNode.textContent, zzdbg.stringifyFull(obj, 0));
+zzdbg.openWindow(url, obj instanceof HTMLScriptElement || obj instanceof HTMLStyleElement || obj instanceof CSSStyleSheet ? "editor" : null);
+return url;
 };
-zzdbg.viewAsSourceURL = function(src) {
-return 'javascript:"<div style=\'white-space:pre-wrap; font:20pt monospace;\'>'+JSON.stringify(escapeHTML(src.replace(/^\s+|\s+$/g, ""))).replace(/^"|"$/g, "")+'</div>"';
+zzdbg.viewAsSource = function(src, name) {
+var title = "zzdbg source viewer for "+(name||"untitled")+" ("+d.title+")";
+var win = zzdbg.openWindow('javascript:'+JSON.stringify(title)+'; "Loading…"', "editor");
+win.onload = function() {
+win.document.body.innerHTML = "<pre></pre>";
+win.document.querySelector("pre").textContent = src.replace(/^\s+|\s+$/g, "");
+becomeEditorWindow(win);
 };
-zzdbg.viewAsSource = function(src) { return zzdbg.openWindow(zzdbg.viewAsSourceURL(src)); };
-zzdbg.openWindow = function(url) {
-return window.open(url, "_blank");
+return win;
 };
-/*zzdbg.trimOutput = function(str) {
-if(str.length > 200) str = str.slice(0, 200)+"…";
-return str;
-};*/
+function becomeEditorWindow(win, title) {
+win.document.title = title || "zzdbg source viewer for "+win.document.title;
+var code = win.document.querySelector("pre");
+code.style = "white-space:pre-wrap; font:20pt monospace;";
+code.contentEditable = true;
+var bar = win.document.createElement("div");
+bar.style = "position:fixed; left:0; bottom:0; width:100%; height:6vw;";
+bar.innerHTML = '<input class="zzapply" type="button" value="Apply" style="height:100%; width:10vw;">';
+win.document.body.appendChild(bar);
+var applybtn = bar.querySelector(".zzapply");
+applybtn.onclick = function() {
+win.opener.postMessage({ "zzcmd": "apply-src", "zzsrc": code.textContent });
+};
+}
+var windowNumber = 0;
+zzdbg.openWindow = function(url, type) {
+return w.open(url, "zzdbg-"+(type||"window")+"-"+(windowNumber++));
+};
 
 
 zzdbg.wgetcmd = function(dls) {
@@ -340,7 +363,7 @@ return filename.replace(/[^a-zA-Z0-9._ \[\]\{\}-]/g, "_");
 
 zzdbg.dl = function(dls) {
 if(!Array.isArray(dls)) dls = toArray(arguments);
-var a = document.createElement("a");
+var a = d.createElement("a");
 ui.appendChild(a);
 /*a.target = "_blank";*/
 for(var i = 0; i < dls.length; i++) {
@@ -380,10 +403,29 @@ function isString(x) {
 return "string" == typeof x || x instanceof String;
 }
 function escapeHTML(str) {
-var x = document.createElement("div");
+var x = d.createElement("div");
 x.textContent = str;
 return x.innerHTML;
 }
+
+
+function eval2(str) {
+var n = zzdbg.evalItems.length;
+var x = zzdbg.evalItems[n] = {};
+var s = d.createElement("script");
+var expr = /^\s*\{/.test(str) ? '{{{{{ '+str+' }}}}}' : 'zzdbg.evalItems['+n+'].res = ((((( '+str+' )))))';
+s.textContent =
+'try { '+expr+'; }'+
+'catch(e) { zzdbg.evalItems['+n+'].err = e; }';
+ui.appendChild(s); s.remove();
+delete zzdbg.evalItems[n];
+if(has(x, "err")) throw x.err;
+return x.res;
+}
+zzdbg.evalItems = [];
+try { geval('"test"'); }
+catch(e) { geval = eval2; zzdbg.log(e); zzdbg.log("Warning: zzdbg is running without eval(). Please wrap statements in braces: { var x; }. Expressions can be run as normal: func()."); }
+zzdbg.eval = geval;
 
 
 input.focus();
