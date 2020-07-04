@@ -1,1 +1,1 @@
-function zzdbg_load(src) { var s = document.createElement("script"); s.textContent = src; document.body.appendChild(s); zzdbg.loader = zzdbg_load; zzdbg.script = s; }
+function zzdbg_load(src) { if(window.zzdbg && zzdbg.script) zzdbg.script.remove(); var s = document.createElement("script"); s.textContent = src; document.body.appendChild(s); zzdbg.loader = zzdbg_load; zzdbg.script = s; }

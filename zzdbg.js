@@ -1,19 +1,24 @@
-(function zzdbg_run(w, host){
+(function zzdbg_main(w, host){
 
 host = host || w;
 var d = w.document;
 var zzdbg = {};
-var spacer = d.createTextNode("\n".repeat(10));
 var ui = d.createElement("div");
 var history = [];
 var hpos = 0;
 var oldconsole = {};
+
+zzdbg.loader = null;
+zzdbg.script = null;
 
 /*if(/^zzdbg-editor/.test(w.name)) {
 return becomeEditorWindow(w);
 }*/
 if(w.zzdbg) {
 history = w.zzdbg.history || history;
+zzdbg.loader = w.zzdbg.loader;
+zzdbg.script = w.zzdbg.script;
+w.zzdbg.script = null;
 w.zzdbg.close();
 }
 w.zzdbg = zzdbg;
@@ -21,7 +26,7 @@ zzdbg.history = history;
 
 zzdbg.close = function() {
 exchange(oldconsole, console);
-spacer.remove();
+if(zzdbg.script) zzdbg.script.remove();
 ui.remove();
 delete w.zzdbg;
 };
@@ -50,7 +55,6 @@ ui.innerHTML = '<style>'+
 '</div>'+
 '<div class="zzsuggest" hidden><\div>';
 
-d.body.appendChild(spacer);
 d.body.appendChild(ui);
 var output = ui.querySelector(".zzoutput");
 var input = ui.querySelector(".zzinput");
@@ -374,8 +378,6 @@ a.remove();
 };
 
 
-zzdbg.loader = null;
-zzdbg.script = null;
 zzdbg.bookmarklet = function() {
 var src = 'javascript:('+zzdbg.loader.toString()+')('+JSON.stringify(zzdbg.script.textContent)+')/*END*/';
 return zzdbg.viewAsSource(src);
@@ -383,17 +385,6 @@ return zzdbg.viewAsSource(src);
 zzdbg.edit = function() {
 return zzdbg.viewAsSource(zzdbg.script.textContent);
 };
-
-
-zzdbg.doc = "Commands:"+
-"\n\t.h - help"+
-"\n\t.q - quit"+
-"\n\t.c - clear output"+
-"\n\t.o (expr) - open/view source"+
-"\n\t.d (expr) - MDN doc"+
-"\n\t.p (expr) - list properties"+
-"\n\t.s - select element"+
-"";
 
 
 function has(a, b) {
@@ -465,5 +456,15 @@ delete zzdbg.evalItems[n];
 }
 
 
+zzdbg.doc = "Commands:"+
+"\n\t.h - help"+
+"\n\t.q - quit"+
+"\n\t.c - clear output"+
+"\n\t.o (expr) - open/view source"+
+"\n\t.d (expr) - MDN doc"+
+"\n\t.p (expr) - list properties"+
+"\n\t.s - select element"+
+"";
+zzdbg.log("zzdbg - type .h for help");
 input.focus();
 })(window);
