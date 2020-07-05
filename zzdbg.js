@@ -66,13 +66,11 @@ zzdbg.suggest = suggest;
 
 
 zzdbg.do = function(cmd) {
-var res = null;
-var err = null;
-if(output.value) output.value += "\n";
-output.value += "> "+cmd;
+var err, res;
+writeToOutput(["> "+cmd], true);
 
 try {
-if(".h" == cmd) res = zzdbg.doc;
+if(".h" == cmd) zzdbg.info(zzdbg.doc);
 else if(".q" == cmd) return zzdbg.close();
 else if(/^\.o\b/.test(cmd)) res = zzdbg.open(zzdbg.evalLocal("("+cmd.replace(/^\.o\s*/, "")+")"));
 else if(/^\.d\b/.test(cmd)) res = docLookup(cmd.replace(/^\.d\s*/, ""));
@@ -82,7 +80,7 @@ else if(".a" == cmd) res = zzdbg.applyChanges();
 else res = zzdbg.evalLocal(cmd.replace(/^javascript:/, ""));
 } catch(e) { err = e; }
 
-zzdbg.log(err||res);
+writeToOutput([err||res], false);
 if(".c" == cmd) output.value = "";
 history.push({ cmd:cmd, res:res, err:err });
 w._ = res;
@@ -142,11 +140,11 @@ input.selectionStart = input.selectionEnd = input.value.length;
 
 zzdbg.stringify = null;
 zzdbg.stringifyDepth = 3;
-zzdbg.stringifyFull = function(x, depth) {
-if(undefined === depth) throw new Error("stringify depth");
+zzdbg.stringifyFull = function(x, depth, inlineStrings) {
+if(undefined === depth || undefined === inlineStrings) throw new Error("stringify args");
 
 if(zzdbg.stringify) {
-x = zzdbg.stringify(x, depth);
+x = zzdbg.stringify(x, depth, inlineStrings);
 if(isString(x)) return x;
 }
 
@@ -159,25 +157,23 @@ if(!x) return '" "';
 }
 
 if(isString(x)) {
-if(depth >= 1) return JSON.stringify(x);
-if(/[^\w!@#$%^&*(),.…:;?\/\[\]{}~=+_ -]/.test(x)) return '"""'+x+'"""';
-return '"'+x+'"';
+return inlineStrings && 0 == depth ? x : JSON.stringify(x);
 }
 
 if(x instanceof NodeList || x instanceof NamedNodeMap || x instanceof StyleSheetList || x instanceof HTMLCollection) x = toArray(x);
 
 if(Array.isArray(x)) {
 if(depth >= zzdbg.stringifyDepth-1) return "[ ("+x.length+" item(s)) ]";
-return "[ "+x.map(function(y) { return zzdbg.stringifyFull(y, depth+1); }).join(", ")+" ]";
+return "[ "+x.map(function(y) { return zzdbg.stringifyFull(y, depth+1, inlineStrings); }).join(", ")+" ]";
 }
 
-if(x instanceof Window) return "[Window "+zzdbg.stringifyFull(x.initialLocation||x.location.href, depth+1)+"]";
+if(x instanceof Window) return "[Window "+zzdbg.stringifyFull(x.initialLocation||x.location.href, depth+1, inlineStrings)+"]";
 
 try {
-if(x instanceof CSSStyleSheet) return zzdbg.stringifyFull(x.cssRules, depth);
+if(x instanceof CSSStyleSheet) return zzdbg.stringifyFull(x.cssRules, depth, inlineStrings);
 if(x instanceof CSSRuleList) {
 if(depth >= 1) return "["+x.length+" CSS rule(s)]";
-return toArray(x).map(function(rule) { return zzdbg.stringifyFull(rule, depth+1); }).join("\n");
+return toArray(x).map(function(rule) { return zzdbg.stringifyFull(rule, depth+1, inlineStrings); }).join("\n");
 }
 if(x instanceof CSSRule) return x.cssText;
 if(x instanceof CSSStyleDeclaration) return "{ "+x.cssText+" }";
@@ -203,7 +199,7 @@ try { if(null === str && x.__proto__ && "function" == typeof x.__proto__.toStrin
 } catch(e){}
 if(null === str) str = Object.prototype.toString.call(x);
 
-if(!isString(x) && "[object Object]" == str) return "{ "+Object.keys(x).map(function(key) { return key+": "+zzdbg.stringifyFull(x[key], depth+1); }).join(", ")+" }";
+if(!isString(x) && "[object Object]" == str) return "{ "+Object.keys(x).map(function(key) { return key+": "+zzdbg.stringifyFull(x[key], depth+1, inlineStrings); }).join(", ")+" }";
 
 return str;
 };
@@ -229,7 +225,7 @@ function docLookup(str) {
 var url = null;
 try {
 var path = null;
-if("" === str) return "Usage: .d expr";
+if("" === str) return zzdbg.info("Usage: .d (expression or search terms)");
 if("null" == str || "undefined" == str) path = [str];
 else {
 var x = zzdbg.evalLocal("("+str+")");
@@ -263,7 +259,7 @@ return results;
 
 
 zzdbg.selectElement = function(root, callback) {
-if(!root) root = d;
+root = root || d;
 root.addEventListener("click", listener, true);
 function listener(event) {
 event.preventDefault();
@@ -276,22 +272,25 @@ zzdbg.lastSelectedElement = null;
 function selectElement() {
 zzdbg.selectElement(null, function(elem) {
 zzdbg.selectElementAction(elem);
-var h = history[history.length-1];
+var h = zzdbg.history.slice(-1)[0];
 if(h && ".s" == h.cmd) { h.res = elem; w._ = elem; }
 zzdbg.lastSelectedElement = elem;
 });
-return "Waiting for click…";
+zzdbg.info("(Waiting for click…)");
 }
 
 
 zzdbg.log = zzdbg.warn = zzdbg.info = zzdbg.error = function zzdbg_log(args) {
-if(output.value) output.value +="\n";
-try { output.value += toArray(arguments).map(function(arg) { return zzdbg.stringifyFull(arg, 0); }).join(", "); }
-catch(e) { output.value += e+" (zzdbg.stringify)"; }
-output.scrollTop = output.scrollHeight;
+return writeToOutput(toArray(arguments), true);
 };
 oldconsole.log = oldconsole.warn = oldconsole.info = oldconsole.error = zzdbg.log;
 exchange(oldconsole, console);
+function writeToOutput(array, inlineStrings) {
+if(output.value) output.value +="\n";
+try { output.value += array.map(function(arg) { return zzdbg.stringifyFull(arg, 0, inlineStrings); }).join(", "); }
+catch(e) { output.value += e+" (zzdbg stringify)"; }
+output.scrollTop = output.scrollHeight;
+}
 
 
 zzdbg.inspect = zzdbg.selectElementAction = function(elem) {
@@ -339,7 +338,7 @@ url = obj.href;
 if(url) return zzdbg.openWindow(url, "editor");
 
 if(isString(obj)) str = obj;
-else name = name || zzdbg.stringifyFull(obj, 0);
+else name = name || zzdbg.stringifyFull(obj, 0, true);
 name = name || "untitled";
 
 if(!str) return null;
@@ -422,14 +421,16 @@ x.textContent = str;
 return x.innerHTML;
 }
 
+zzdbg.log("zzdbg - type .h for help");
 
 function eval2(str) {
 var n = zzdbg.evalItems.length;
-var x = zzdbg.evalItems[n] = {};
+var x = zzdbg.evalItems[n] = { err: new SyntaxError("eval2") };
 var s = d.createElement("script");
+str = str.replace(/;+$/, "");
 var expr = /^\s*\{/.test(str) ? '{{{{{ '+str+' }}}}}' : 'zzdbg.evalItems['+n+'].res = ((((( '+str+' )))))';
 s.textContent =
-'try { '+expr+'; }'+
+'try { '+expr+'; delete zzdbg.evalItems['+n+'].err; }'+
 'catch(e) { zzdbg.evalItems['+n+'].err = e; }';
 ui.appendChild(s); s.remove();
 delete zzdbg.evalItems[n];
@@ -450,7 +451,6 @@ catch(e) { err = e; }
 setTimeout(function() { cb(err, res); }, 0);
 };
 
-zzdbg.log("zzdbg - type .h for help");
 
 zzdbg.editMode = false;
 if(/^zzdbg-editor/.test(w.name)) {
