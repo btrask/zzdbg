@@ -1,4 +1,4 @@
-# zzdbg: a web debugger in a bookmarklet
+# zzdbg: a web debugger in a bookmarklet in a quine
 
 zzdbg is a simple but relatively powerful web and Javascript debugger that loads into a web page as a bookmarklet. It's specifically designed for mobile browsers that don't have their own built-in debuggers and which make it too difficult to run your own code.
 
@@ -39,8 +39,22 @@ zzdbg is a simple but relatively powerful web and Javascript debugger that loads
 
 zzdbg also defines the `zzdbg` object that exposes most of its functionality programmatically.
 
+### How is it a quine?
+zzdbg can print and also edit/reload its own code. Several functions are available:
+- `zzdbg.bookmarklet()` returns the full code as a `javascript:` URL string
+- `zzdbg.viewBookmarklet()` opens an editor with the bookmarklet source (read-only)
+- `zzdbg.editLoader()` opens an editor with the small loader function
+- `zzdbg.editScript()` opens an editor with the main zzdbg source code (including whitespace)
+
+After editing the source, you can run `.a` to reload zzdbg with your changes, and then get the new "compiled" bookmarklet.
+
+### Is it really a debugger if it doesn't support breakpoints?
+Well, it supports console.log()...
+
+Breakpoints might be possible in the future using something like [JS-Interpreter](https://github.com/NeilFraser/JS-Interpreter) or [Acorn](https://github.com/acornjs/acorn). However, a bookmarklet-based debugger has the limitation of not necessarily being able to see all of the page's code. The problem is, any code that could possibly call the function where the breakpoint is set also needs to be interpreted/instrumented.
+
 ### Known issues
-Some pages with strict Content-Security-Policy headers break `eval`, unfortunately. Some features are limited by security restrictions as well.
+In general zzdbg does a pretty good job working within browsers' security rules. On pages where `eval` is blocked by Content-Security-Policy, there is an "eval2" substitute, but it is more limited.
 
 Only tested in Firefox Mobile.
 
