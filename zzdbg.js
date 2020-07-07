@@ -4,7 +4,6 @@ var w = window;
 var d = w.document;
 var zzdbg = {};
 var ui = d.createElement("div");
-var history = [];
 var hpos = 0;
 var oldconsole = {};
 var reqHandlers = {};
@@ -12,16 +11,22 @@ var resHandlers = [null];
 
 zzdbg.loader = null;
 zzdbg.script = null;
+zzdbg.history = [];
+zzdbg.editors = [];
+zzdbg.editor = null;
 
 if(w.zzdbg) {
-history = w.zzdbg.history || history;
 zzdbg.loader = w.zzdbg.loader;
 zzdbg.script = w.zzdbg.script;
+zzdbg.script.textContent = "("+zzdbg_main.toString()+")();";
 w.zzdbg.script = null;
+zzdbg.history = w.zzdbg.history;
+zzdbg.editors = w.zzdbg.editors;
+zzdbg.editor = w.zzdbg.editor;
+w.zzdbg.editor = null;
 w.zzdbg.close();
 }
 w.zzdbg = zzdbg;
-zzdbg.history = history;
 
 zzdbg.close = function() {
 exchange(oldconsole, console);
@@ -34,7 +39,7 @@ zzdbg.ui = ui;
 
 ui.className = "zzdbgui";
 ui.innerHTML = '<style>'+
-'.zzdbgui, .zzdbgui * { font-family:monospace; font-size:3vw !important; margin:0 !important; padding:0 !important; box-sizing:border-box !important; border-radius:0; background-color:white; color:black; }'+
+'.zzdbgui, .zzdbgui * { font:3vw monospace !important; margin:0 !important; padding:0 !important; box-sizing:border-box !important; border-radius:0; background-color:white; color:black; }'+
 '.zzdbgui { position:fixed; left:0; bottom:0; width:100%; height:40%; z-index:100000000; }'+
 '.zzdbgui textarea, .zzdbgui input { border:0.3vw solid black !important; padding:0 1vw !important; }'+
 '.zzoutput { position:absolute; left:0; top:0; width:100%; height:calc(100% - 6vw); overflow-y:auto; white-space:pre-wrap; }'+
@@ -46,10 +51,11 @@ ui.innerHTML = '<style>'+
 '.zzupbtn { right:0; }'+
 '.zzsuggest { position:fixed; bottom:5vw; right:25vw; border:0.3vw solid black; overflow:hidden auto; text-overflow:ellipsis; }'+
 '.zzsuggest > * { padding:0.5vw 2vw !important; }'+
+'.zzeditor { width:100%; height:60%; font:3vw monospace; }'+
 '</style>'+
 '<textarea class="zzoutput" readonly="true"></textarea>'+
 '<div class="zzbar">'+
-'<input class="zzinput" type="text">'+
+'<textarea class="zzinput"></textarea>'+
 '<input class="zzdnbtn" type="button" value="⬇">'+
 '<input class="zzupbtn" type="button" value="⬆">'+
 '</div>'+
@@ -81,21 +87,33 @@ quiet = true;
 else if(/^\.o\b/.test(cmd)) res = zzdbg.open(zzdbg.evalLocal("("+cmd.replace(/^\.o\s*/, "")+")"));
 else if(/^\.d\b/.test(cmd)) res = docLookup(cmd.replace(/^\.d\s*/, ""));
 else if(/^\.p\b/.test(cmd)) res = zzdbg.properties(zzdbg.evalLocal("("+cmd.replace(/^\.p\s*/, "")+")"));
-else if(".s" == cmd) res = selectElement();
-else if(".a" == cmd) res = zzdbg.applyChanges();
-else res = zzdbg.evalLocal(cmd.replace(/^javascript:/, ""));
+else if(".s" == cmd) {
+selectElement();
+quiet = true;
+} else if(".a" == cmd) {
+zzdbg.applyChanges();
+quiet = true;
+} else res = zzdbg.evalLocal(cmd.replace(/^javascript:/, ""));
 } catch(e) { err = e; }
 
 if(!quiet) writeToOutput([err||res], false);
 if(".c" == cmd) output.value = "";
-history.push({ cmd:cmd, res:res, err:err });
+zzdbg.history.push({ cmd:cmd, res:res, err:err });
 w._ = res;
 };
 
-input.onkeyup = function(event){
+input.onkeydown = function(event) {
 var cmd = input.value;
 hpos = 0;
-
+if("Enter" != event.key) return;
+event.preventDefault();
+if("" == cmd) return;
+input.value = "";
+zzdbg.do(cmd);
+suggest.hidden = true;
+};
+input.onkeyup = function(event){
+var cmd = input.value;
 var pos = input.selectionEnd;
 var term = cmd.slice(0, pos).match(/([\w$]+\.)*[\w$]*$/);
 try {
@@ -121,12 +139,6 @@ suggest.hidden = !props.length;
 suggest.style.width = suggest.scrollWidth+"px";
 suggest.style.height = Math.min(suggest.scrollHeight, w.innerHeight*.75)+"px";
 } catch(e) { suggest.hidden = true; }
-
-if("Enter" != event.key) return;
-if("" == cmd) return;
-input.value = "";
-zzdbg.do(cmd);
-suggest.hidden = true;
 };
 
 
@@ -137,9 +149,9 @@ if(dnbtn == this) dir = -1;
 if(upbtn == this) dir = +1;
 if(0 == dir) return;
 hpos += dir;
-if(hpos > history.length) hpos = history.length;
+hpos = Math.min(hpos, zzdbg.history.length);
 if(hpos < 0) hpos = 0;
-input.value = hpos ? history.slice(-hpos)[0].cmd : "";
+input.value = hpos ? zzdbg.history.slice(-hpos)[0].cmd : "";
 input.selectionStart = input.selectionEnd = input.value.length;
 };
 
@@ -286,14 +298,19 @@ zzdbg.info("(Waiting for click…)");
 }
 
 
-zzdbg.log = zzdbg.warn = zzdbg.info = zzdbg.error = function zzdbg_log(args) {
-return writeToOutput(toArray(arguments), true);
+zzdbg.log = zzdbg.info = function zzdbg_log(...args) {
+writeToOutput(args, true);
+};
+zzdbg.warn = specialLog("Warning:");
+zzdbg.error = specialLog("Error:");
+function specialLog(pfx) {
+return function zzdbg_log(...args) { writeToOutput([pfx].concat(args), true); };
 };
 oldconsole.log = oldconsole.warn = oldconsole.info = oldconsole.error = zzdbg.log;
 exchange(oldconsole, console);
 function writeToOutput(array, inlineStrings) {
 if(output.value) output.value +="\n";
-try { output.value += array.map(function(arg) { return zzdbg.stringifyFull(arg, 0, inlineStrings); }).join(", "); }
+try { output.value += array.map(function(arg) { return zzdbg.stringifyFull(arg, 0, inlineStrings); }).join(" "); }
 catch(e) { output.value += e+" (zzdbg stringify)"; }
 output.scrollTop = output.scrollHeight;
 }
@@ -326,10 +343,12 @@ else if(obj.src) url = obj.src;
 return zzdbg.openWindow(url);
 };
 zzdbg.viewAsSource = function(obj, name) {
-var url = null;
-var str = null;
-
-if(obj instanceof HTMLScriptElement) {
+var target = obj, url, str;
+if(obj == zzdbg.loader) {
+target = "zzdbg loader";
+str = obj.toString();
+name = name || "zzdbg loader";
+} else if(obj instanceof HTMLScriptElement) {
 if(obj.src) url = obj.src;
 else str = obj.textContent;
 } else if(obj instanceof HTMLStyleElement) {
@@ -339,43 +358,77 @@ if(obj.href) url = obj.href;
 else str = obj.ownerNode.textContent;
 } else if(obj instanceof HTMLLinkElement) {
 url = obj.href;
-}
-
-if(url) {
-zzdbg.info("(Run zzdbg in window to edit)");
-return zzdbg.openWindow(url, "editor");
-}
-
-if(isString(obj)) str = obj;
-else name = name || zzdbg.stringifyFull(obj, 0, true);
+} else if(isString(obj)) {
+target = "string";
+if(/^\w+:\/\/\w/.test(obj)) url = obj;
+else str = obj;
 name = name || "untitled";
-
-if(!str) return null;
-
+}
+name = name || zzdbg.stringifyFull(target, 0, true);
+return openEditor(target, url, str, name);
+};
+function findEditor(obj) {
+var ed = zzdbg.editors;
+for(var i = 0; i < ed.length; i++) {
+if(ed[i].window === obj) return ed[i].target;
+if(ed[i].target === obj) return ed[i].window;
+}
+return undefined;
+}
+function openEditor(target, url, str, name) {
+if(!url && !isString(str)) return null;
+name = name || "untitled";
 var title = "zzdbg source view for "+name+" ("+d.title+")";
-var win = zzdbg.openWindow('javascript:'+JSON.stringify(title)+'; "Loading…"', "editor");
-win.onload = function() {
+var jsurl = 'javascript:'+JSON.stringify(title)+'; "Loading…"';
+var win = zzdbg.openWindow(url || jsurl, "editor");
+try { win.onload = setupWin; }
+catch(e) { zzdbg.info("(To edit, run zzdbg again in the new window)"); }
+function setupWin() {
 win.onload = null;
+if(!url) {
 win.document.body.innerHTML = "<pre></pre>";
 win.document.querySelector("pre").textContent = str.replace(/^\s+|\s+$/g, "");
+}
 win.location = zzdbg.bookmarklet();
-};
+}
+zzdbg.editors.push({ window:win, target:target });
 return win;
-};
+}
 zzdbg.applyChanges = function() {
-if(!zzdbg.editMode) throw new Error("Not in edit mode");
-var src = d.querySelector("pre").textContent;
-sendWindowRequest(w.opener, "apply", { src:src }, function(res) { zzdbg.info("Applied", res); });
+if(!zzdbg.editor) throw new Error("Not in edit mode");
+var src = zzdbg.editor.value;
+sendWindowRequest(w.opener, "apply", { src:src }, function(res) { zzdbg.info("Apply changes:", res || "success"); });
 };
 reqHandlers.apply = function(win, payload, sendRes) {
-zzdbg.log("got changes", win);
-sendRes("ok");
+var target = findEditor(win);
+if(!target) return sendRes("unknow target");
+var src = payload.src;
+if(!isString(src)) return sendRes("not a string");
+try {
+if("string" == target) {
+return sendRes("target does not support editing");
+} else if("zzdbg loader" == target) {
+zzdbg.loader = zzdbg.evalLocal("("+src+")");
+} else if(target instanceof HTMLScriptElement) {
+if(target.src) target["data-zzdbg-src"] = target.src;
+target.removeAttribute("src");
+target.textContent = src;
+zzdbg.evalLocal(src);
+} else {
+zzdbg.log("apply to unsupported target", target);
+return sendRes("unsupported target");
+}
+sendRes(null);
+} catch(e) { sendRes(String(e)); }
 };
 zzdbg.openWindow = function(url, type) {
 var rnd = Math.random().toString(36).slice(2);
 var win = w.open(url, "zzdbg-"+(type||"window")+"-"+rnd);
 win.initialLocation = url;
 return win;
+};
+zzdbg.bookmarklet = function() {
+return 'javascript:('+zzdbg.loader.toString()+')('+JSON.stringify("("+zzdbg_main.toString()+")()")+');/*END*/';
 };
 
 
@@ -402,20 +455,6 @@ a.href = (isString(dls[i]) ? dls[i] : dls[i].url);
 a.click();
 }
 a.remove();
-};
-
-
-zzdbg.bookmarklet = function() {
-return 'javascript:('+zzdbg.loader.toString()+')('+JSON.stringify("("+zzdbg_main.toString()+")()")+');/*END*/';
-};
-zzdbg.viewBookmarklet = function() {
-return zzdbg.viewAsSource(zzdbg.bookmarklet(), "zzdbg bookmarklet");
-};
-zzdbg.editLoader = function() {
-return zzdbg.viewAsSource(zzdbg.loader.toString(), "zzdbg loader", function(src) { zzdbg.log("loader changed") });
-};
-zzdbg.editScript = function() {
-return zzdbg.viewAsSource(zzdbg.script);
 };
 
 
@@ -461,7 +500,7 @@ zzdbg.evalItems = [];
 zzdbg.evalLocal = eval;
 try { zzdbg.evalLocal('"test"'); }
 catch(e) {
-zzdbg.evalLocal = eval2; zzdbg.log("Warning: zzdbg is running without eval(). Please wrap statements in braces: { var x; }. Expressions can be run as normal: func(). ("+e+")");
+zzdbg.evalLocal = eval2; zzdbg.warn("Warning: zzdbg is running without eval(). Please wrap statements in braces: { var x; }. Expressions can be run as normal: func(). ("+e+")");
 }
 zzdbg.eval = function(cmd, cb) {
 var err = null, res = null;
@@ -471,20 +510,22 @@ setTimeout(function() { cb(err, res); }, 0);
 };
 
 
-zzdbg.editMode = false;
-if(/^zzdbg-editor/.test(w.name)) {
-zzdbg.editMode = true;
-d.title = "zzdbg source view for "+d.title;
-var code = d.querySelector("pre");
-code.style = "white-space:pre-wrap; font:20pt monospace;";
-code.contentEditable = true;
-zzdbg.log("Editor mode: use .a to apply changes to main window");
+function enterEditMode() {
+zzdbg.info("Editor mode: use .a to apply changes to main document");
 zzdbg.eval = function(src, cb) {
-var n = zzdbg.evalItems.length;
-zzdbg.evalItems[n] = { cb: cb };
-w.opener.postMessage({ zzdbg_eval_req: true, zzdbg_cmd: cmd, zzdbg_id: n }, "*");
+sendWindowRequest(w.opener, "eval", cmd, function(res) {});
 };
+if(!zzdbg.editor) {
+zzdbg.editor = d.createElement("textarea");
+zzdbg.editor.className = "zzeditor";
+d.title = "zzdbg source view for "+d.title;
+var pre = d.querySelector("pre");
+zzdbg.editor.value = pre.textContent;
+pre.replaceWith(zzdbg.editor);
 }
+}
+reqHandlers.eval = function(win, payload, sendRes) {};
+if(/^zzdbg-editor/.test(w.name)) enterEditMode();
 
 
 function sendWindowRequest(window, type, payload, cb) {

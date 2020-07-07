@@ -36,17 +36,20 @@ zzdbg is a simple but relatively powerful web and Javascript debugger that loads
 - `.d (expr)`: look up the value of the expression or an arbitrary string in the MDN docs
 - `.p (expr)`: list properties
 - `.s`: click an element to get a reference to it (use `_` or `zzdbg.lastSelectedElement` after clicking)
+- `.a`: apply changes made in editor mode to the main document
 
 zzdbg also defines the `zzdbg` object that exposes most of its functionality programmatically.
 
-### How is it a quine?
-zzdbg can print and also edit/reload its own code. Several functions are available:
-- `zzdbg.bookmarklet()` returns the full code as a `javascript:` URL string
-- `zzdbg.viewBookmarklet()` opens an editor with the bookmarklet source (read-only)
-- `zzdbg.editLoader()` opens an editor with the small loader function
-- `zzdbg.editScript()` opens an editor with the main zzdbg source code (including whitespace)
+### What's so special about being a quine?
+Quines are nothing special, but as a quine and an editor, zzdbg is fully "self-hosting". You can run it from a bookmarklet, edit it, and save it back into the bookmarklet without directly touching the file system.
 
-After editing the source, you can run `.a` to reload zzdbg with your changes, and then get the new "compiled" bookmarklet.
+Here is the full self-editing workflow:
+1. Run zzdbg from its bookmarklet
+2. Run the command `.o zzdbg.script` to open an editor with the main zzdbg source code, or `.o zzdbg.loader` to edit the loader
+3. Make some changes
+4. Run `.a` in the editor console to apply your changes
+5. Back in the main window, run `.o zzdbg.bookmarklet()` to open a (read-only) editor with the full bookmarklet code
+6. Copy and paste the bookmarklet code back into your browser bookmarks to save your changes
 
 ### Is it really a debugger if it doesn't support breakpoints?
 Well, it supports console.log()...
@@ -54,9 +57,9 @@ Well, it supports console.log()...
 Breakpoints might be possible in the future using something like [JS-Interpreter](https://github.com/NeilFraser/JS-Interpreter) or [Acorn](https://github.com/acornjs/acorn). However, a bookmarklet-based debugger has the limitation of not necessarily being able to see all of the page's code. The problem is, any code that could possibly call the function where the breakpoint is set also needs to be interpreted/instrumented.
 
 ### Known issues
-In general zzdbg does a pretty good job working within browsers' security rules. On pages where `eval` is blocked by Content-Security-Policy, there is an "eval2" substitute, but it is more limited.
+In general zzdbg does a pretty good job working within browsers' security rules. On pages where `eval` is blocked by Content-Security-Policy, there is an "eval2" substitute, but it is more limited. If you want to edit a cross-origin script, just run zzdbg again in the new window and it will link up with the main document.
 
-Only tested in Firefox Mobile.
+It's only been tested in Firefox Mobile.
 
 ### Development notes
 The coding style is "idiosyncratic" because I'm writing it entirely on my phone. Some compromises are made to keep the code short enough to fit in a bookmarklet as well.
