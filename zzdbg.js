@@ -14,6 +14,7 @@ zzdbg.script = null;
 zzdbg.history = [];
 zzdbg.editors = [];
 zzdbg.editor = null;
+zzdbg.filename = null;
 
 if(w.zzdbg) {
 zzdbg.loader = w.zzdbg.loader;
@@ -24,6 +25,7 @@ zzdbg.history = w.zzdbg.history;
 zzdbg.editors = w.zzdbg.editors;
 zzdbg.editor = w.zzdbg.editor;
 w.zzdbg.editor = null;
+zzdbg.filename = w.zzdbg.filename;
 w.zzdbg.close();
 }
 w.zzdbg = zzdbg;
@@ -87,12 +89,15 @@ quiet = true;
 else if(/^\.o\b/.test(cmd)) res = zzdbg.open(zzdbg.evalLocal("("+cmd.replace(/^\.o\s*/, "")+")"));
 else if(/^\.d\b/.test(cmd)) res = docLookup(cmd.replace(/^\.d\s*/, ""));
 else if(/^\.p\b/.test(cmd)) res = zzdbg.properties(zzdbg.evalLocal("("+cmd.replace(/^\.p\s*/, "")+")"));
-else if(".s" == cmd) {
+else if(".e" == cmd) {
 selectElement();
 quiet = true;
 } else if(".a" == cmd) {
 zzdbg.applyChanges();
 quiet = true;
+} else if(/^\.s\b/.test(cmd)) {
+zzdbg.filename = cmd.replace(/^\.s\s*|\s*$/g, "") || zzdbg.filename;
+zzdbg.dl({ filename: zzdbg.filename || "untitled.txt", url:"data:text/plain,"+encodeURI(zzdbg.editor.value) });
 } else res = zzdbg.evalLocal(cmd.replace(/^javascript:/, ""));
 } catch(e) { err = e; }
 
@@ -198,7 +203,7 @@ if(x instanceof CSSStyleDeclaration) return "{ "+(x.cssText||toArray(x).filter(f
 } catch(e) { if(!(e instanceof SecurityError)) throw e; }
 
 function url_summary(url) {
-return url.replace(/^.*\//, "…");
+return 0 == depth ? url : url.replace(/^.*\//, "…");
 }
 if(x instanceof HTMLElement) {
 var attrs = [x.tagName.toLowerCase()];
@@ -255,7 +260,7 @@ if(!path || !path[0]) throw new Error();
 if("CSS2Properties" == path[0]) path[0] = "CSSStyleDeclaration";
 
 if(/^encode|^Object$|^Array$|^Boolean$|^Number$|^BigInt$|^Math$|^Date$|^String$|^RegExp$|Error$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/"+path.join("/");
-else if(/^CSS|^DOM|^HTML|^Node|^NamedNode|^RTC|^XML|^Attr$|^ChildNode$|^Document$|^IDBFactory$|^URL$|^Window$|Event|Style|Element$|List$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/API/"+path.join("/");
+else if(/^CSS|^DOM|^File|^HTML|^Node|^NamedNode|^RTC|^XML|^Attr$|^ChildNode$|^Document$|^IDBFactory$|^URL$|^Window$|Event|Style|Element$|List$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/API/"+path.join("/");
 else url = "https://developer.mozilla.org/en-US/search?q="+path.join(".");
 
 } catch(e) {
@@ -291,7 +296,7 @@ function selectElement() {
 zzdbg.selectElement(null, function(elem) {
 zzdbg.selectElementAction(elem);
 var h = zzdbg.history.slice(-1)[0];
-if(h && ".s" == h.cmd) { h.res = elem; w._ = elem; }
+if(h && ".e" == h.cmd) { h.res = elem; w._ = elem; }
 zzdbg.lastSelectedElement = elem;
 });
 zzdbg.info("(Waiting for click…)");
@@ -335,22 +340,19 @@ return results;
 
 
 zzdbg.open = function(obj) {
-var win = zzdbg.viewAsSource(obj);
-if(win) return win;
-var url = null;
-if(obj.href) url = obj.href;
-else if(obj.src) url = obj.src;
-return zzdbg.openWindow(url);
+return zzdbg.viewAsSource(obj) || zzdbg.openWindow(parseURL(obj) || obj.href || obj.src);
 };
 zzdbg.viewAsSource = function(obj, name) {
 var target = obj, url, str;
 if(obj == zzdbg.loader) {
-target = "zzdbg loader";
+target = "loader.js";
 str = obj.toString();
-name = name || "zzdbg loader";
+name = name || target;
 } else if(obj instanceof HTMLScriptElement) {
 if(obj.src) url = obj.src;
 else str = obj.textContent;
+if(obj == zzdbg.script) name = name || "zzdbg.js";
+name = name || "untitled.js";
 } else if(obj instanceof HTMLStyleElement) {
 str = obj.textContent;
 } else if(obj instanceof CSSStyleSheet) {
@@ -359,36 +361,42 @@ else str = obj.ownerNode.textContent;
 } else if(obj instanceof HTMLLinkElement) {
 url = obj.href;
 } else if(isString(obj)) {
-target = "string";
-if(/^\w+:\/\/\w/.test(obj)) url = obj;
-else str = obj;
-name = name || "untitled";
+var parsed = parseURL(obj);
+if(!parsed) str = obj;
+else if("javascript:" == parsed.protocol) {
+str = obj;
+name = name || "bookmarklet.js";
+} else if(/\.(js|css|html)$/i.test(parsed.pathname)) url = obj;
+target = null;
 }
-name = name || zzdbg.stringifyFull(target, 0, true);
 return openEditor(target, url, str, name);
 };
 function findEditor(obj) {
+if(!obj) return;
 var ed = zzdbg.editors;
 for(var i = 0; i < ed.length; i++) {
+if(ed[i].window.closed) { ed.splice(i, 1); i--; continue; }
 if(ed[i].window === obj) return ed[i].target;
 if(ed[i].target === obj) return ed[i].window;
 }
-return undefined;
 }
 function openEditor(target, url, str, name) {
+var win = findEditor(target);
+if(win) return win.focus(), win;
 if(!url && !isString(str)) return null;
-name = name || "untitled";
-var title = "zzdbg source view for "+name+" ("+d.title+")";
-var jsurl = 'javascript:'+JSON.stringify(title)+'; "Loading…"';
-var win = zzdbg.openWindow(url || jsurl, "editor");
+var title = "zzdbg source view for "+(name||"untitled")+" ("+d.title+")";
+var jsurl = 'javascript:'+JSON.stringify(title)+'; "..."';
+win = zzdbg.openWindow(url || jsurl, "editor");
 try { win.onload = setupWin; }
 catch(e) { zzdbg.info("(To edit, run zzdbg again in the new window)"); }
 function setupWin() {
 win.onload = null;
 if(!url) {
+win.document.title = name || "";
 win.document.body.innerHTML = "<pre></pre>";
 win.document.querySelector("pre").textContent = str.replace(/^\s+|\s+$/g, "");
 }
+win.zzdbg_filename = name;
 win.location = zzdbg.bookmarklet();
 }
 zzdbg.editors.push({ window:win, target:target });
@@ -401,13 +409,13 @@ sendWindowRequest(w.opener, "apply", { src:src }, function(res) { zzdbg.info("Ap
 };
 reqHandlers.apply = function(win, payload, sendRes) {
 var target = findEditor(win);
-if(!target) return sendRes("unknow target");
+if(undefined === target) return sendRes("unknown target");
 var src = payload.src;
 if(!isString(src)) return sendRes("not a string");
 try {
-if("string" == target) {
+if(!target) {
 return sendRes("target does not support editing");
-} else if("zzdbg loader" == target) {
+} else if("loader.js" == target) {
 zzdbg.loader = zzdbg.evalLocal("("+src+")");
 } else if(target instanceof HTMLScriptElement) {
 if(target.src) target["data-zzdbg-src"] = target.src;
@@ -422,6 +430,8 @@ sendRes(null);
 } catch(e) { sendRes(String(e)); }
 };
 zzdbg.openWindow = function(url, type) {
+if(!url) return null;
+url = String(url);
 var rnd = Math.random().toString(36).slice(2);
 var win = w.open(url, "zzdbg-"+(type||"window")+"-"+rnd);
 win.initialLocation = url;
@@ -430,7 +440,6 @@ return win;
 zzdbg.bookmarklet = function() {
 return 'javascript:('+zzdbg.loader.toString()+')('+JSON.stringify("("+zzdbg_main.toString()+")()")+');/*END*/';
 };
-
 
 zzdbg.wgetcmd = function(dls) {
 if(!Array.isArray(dls)) dls = toArray(arguments);
@@ -442,8 +451,6 @@ return "'"+shell_arg.replace(/\'/g, "\\'")+"'";
 function safe_filename(filename) {
 return filename.replace(/[^a-zA-Z0-9._ \[\]\{\}-]/g, "_");
 }
-
-
 zzdbg.dl = function(dls) {
 if(!Array.isArray(dls)) dls = toArray(arguments);
 var a = d.createElement("a");
@@ -478,6 +485,10 @@ function escapeHTML(str) {
 var x = d.createElement("div");
 x.textContent = str;
 return x.innerHTML;
+}
+function parseURL(str) {
+try { return new URL(str); }
+catch(e) { return null; }
 }
 
 zzdbg.log("zzdbg - type .h for help");
@@ -516,6 +527,7 @@ zzdbg.eval = function(src, cb) {
 sendWindowRequest(w.opener, "eval", cmd, function(res) {});
 };
 if(!zzdbg.editor) {
+zzdbg.filename = w.zzdbg_filename || w.location.pathname.replace(/^.*\//, "");
 zzdbg.editor = d.createElement("textarea");
 zzdbg.editor.className = "zzeditor";
 d.title = "zzdbg source view for "+d.title;
@@ -556,8 +568,9 @@ zzdbg.doc = "Commands:"+
 "\n\t.o (expr) - open/view source"+
 "\n\t.d (expr) - MDN doc"+
 "\n\t.p (expr) - list properties"+
-"\n\t.s - select element"+
-"\n\t.a - apply changes from editor to main document"+
+"\n\t.e - select element"+
+"\n\t.a - apply changes to main document (editor mode)"+
+"\n\t.s (filename) - save file (editor mode)"+
 "";
 input.focus();
 })();

@@ -8,11 +8,11 @@ zzdbg is a simple but relatively powerful web and Javascript debugger that loads
 > 2+2
 4
 > window
-[object Window]
+[Window "https://example.com"]
 
 // Get the previous result
 > _
-[object Window]
+[Window "https://example.com"]
 
 // DOM elements are printed nicely
 > document.querySelector("#main")
@@ -35,8 +35,9 @@ zzdbg is a simple but relatively powerful web and Javascript debugger that loads
 - `.o (expr)`: open/view source of URL, anchor, image, script or style object
 - `.d (expr)`: look up the value of the expression or an arbitrary string in the MDN docs
 - `.p (expr)`: list properties
-- `.s`: click an element to get a reference to it (use `_` or `zzdbg.lastSelectedElement` after clicking)
+- `.e`: click an element to get a reference to it (use `_` or `zzdbg.lastSelectedElement` after clicking)
 - `.a`: apply changes made in editor mode to the main document
+- `.s (filename)`: save file (editor mode)
 
 zzdbg also defines the `zzdbg` object that exposes most of its functionality programmatically.
 
