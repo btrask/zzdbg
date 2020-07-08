@@ -438,7 +438,7 @@ win.initialLocation = url;
 return win;
 };
 zzdbg.bookmarklet = function() {
-return 'javascript:('+zzdbg.loader.toString()+')('+JSON.stringify("("+zzdbg_main.toString()+")()")+');/*END*/';
+return 'javascript:('+zzdbg.loader.toString()+')('+JSON.stringify("("+zzdbg_main.toString()+")();")+');/*END*/';
 };
 
 zzdbg.wgetcmd = function(dls) {
