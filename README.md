@@ -65,4 +65,11 @@ It's only been tested in Firefox Mobile.
 ### Development notes
 The coding style is "idiosyncratic" because I'm writing it entirely on my phone. Some compromises are made to keep the code short enough to fit in a bookmarklet as well.
 
+### Similar projects
+- https://github.com/liriliri/eruda
+- https://github.com/Tencent/vConsole
+- https://www.hnldesign.nl/work/code/mobileconsole-javascript-console-for-mobile-devices/)
+
+
+
 License: MIT
