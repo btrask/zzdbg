@@ -44,19 +44,21 @@ Look up MDN documentation for arbitrary objects:
 
 ### Special commands
 - `.h`: help
-- `.q`: quit
+- `.q`: quit (or hide in editor mode)
 - `.c`: clear output
 - `.o (expr)`: open/view source of URL, anchor, image, script or style object
 - `.d (expr)`: look up the value of the expression or an arbitrary string in the MDN docs
 - `.p (expr)`: list properties
 - `.e`: click an element to get a reference to it (use `_` or `zzdbg.lastSelectedElement` after clicking)
-- `.a`: apply changes made to the main document (editor mode)
+- `.a`: apply changes to the main document (editor mode)
 - `.s [filename]`: save file (editor mode)
 
 zzdbg also defines the `zzdbg` object that exposes most of its functionality programmatically.
 
 ### What's so special about being a quine?
 Quines are nothing special, but as a quine and an editor, zzdbg is fully "self-hosting". You can run it from a bookmarklet, edit it, and save it back into the bookmarklet without directly touching the file system.
+
+It also uses its quine form to load itself into new windows, as: `newWin.location = zzdbg.bookmarklet()`.
 
 Here is the full self-editing workflow:
 1. Run zzdbg from its bookmarklet
@@ -69,7 +71,7 @@ Here is the full self-editing workflow:
 ### Is it really a debugger if it doesn't support breakpoints?
 Well, it supports console.log()...
 
-Breakpoints might be possible in the future using something like [JS-Interpreter](https://github.com/NeilFraser/JS-Interpreter) or [Acorn](https://github.com/acornjs/acorn). However, a bookmarklet-based debugger has the limitation of not necessarily being able to see all of the page's code. The problem is, any code that could possibly call the function where the breakpoint is set also needs to be interpreted/instrumented.
+Unfortunately, it seems nearly impossible to support breakpoints from within a page, simply because it can't reliably get all JS code across origins. Any code that could possibly call the function where the breakpoint is set also needs to be instrumented or interpreted.
 
 ### Known issues
 Some pages have strict Content-Security-Policy settings that block bookmarklets entirely (which I consider a browser bug). Aside from that, zzdbg does a pretty good job working within browsers' security rules. On pages where `eval` is blocked, there is an "eval2" substitute, but it is more limited. If you want to edit a cross-origin script, just run zzdbg again in the new window and it will link up with the main document.
