@@ -4,40 +4,40 @@ zzdbg is a simple but relatively powerful web and Javascript debugger that loads
 
 ### Usage examples
 
-Use `.e` to get an element by clicking somewhere on the page. It prints a summary of the element plus all the CSS rules that apply to it.
+Use `.e` to get an element by clicking somewhere on the page. It prints a summary of the element plus all the CSS rules that apply to it:
 
 > `> .e`  
 > `(Waiting for click…)`  
 > `<img src="https://www.wikipedia.org/portal/wikipedia.org/assets/img/Wikipedia-logo-v2.png"> [ {  }, img { vertical-align: middle; }, hr, img { border: 0px none; }, .central-featured-logo { position: absolute; top: 158px; left: 35px; } ]`  
 
-Use `.o` to "open" an arbitrary object. `_` is the last result, in this case, an `<img>`.
+Use `.o` to "open" an arbitrary object. `_` is the last result, in this case, an `<img>`:
 
 > `> .o _`  
 > `[Window "https://www.wikipedia.org/portal/wikipedia.org/assets/img/Wikipedia-logo-v2.png"]`  
 
-Run arbitrary Javascript
+Run arbitrary Javascript:
 
 > `> 2+2`  
 > `4`  
 > `> document.title`  
 > `"Wikipedia"`
 
-DOM elements are printed nicely
+DOM elements are printed nicely:
 
 > `> document.querySelector(".sprite")`  
 > `<span class="central-textlogo__image sprite svg-Wikipedia_wordmark">`
 
-View source of first script in page
+View source of first script in page:
 
 > `> .o document.scripts[0]`  
 > `[Window "javascript:\"zzdbg source view for inline-script.js (Wikipedia)\"; \"...\""]`
 
-View source of first style sheet in page
+View source of first style sheet in page:
 
 > `> .o document.styleSheets[0]`  
 > `[Window "javascript:\"zzdbg source view for inline-style.css (Wikipedia)\"; \"...\""]`
 
-Look up MDN documentation for arbitrary objects
+Look up MDN documentation for arbitrary objects:
 
 > `> .d document.body`  
 > `[Window "https://developer.mozilla.org/en-US/docs/Web/API/HTMLBodyElement"]`
@@ -50,8 +50,8 @@ Look up MDN documentation for arbitrary objects
 - `.d (expr)`: look up the value of the expression or an arbitrary string in the MDN docs
 - `.p (expr)`: list properties
 - `.e`: click an element to get a reference to it (use `_` or `zzdbg.lastSelectedElement` after clicking)
-- `.a`: apply changes made in editor mode to the main document
-- `.s (filename)`: save file (editor mode)
+- `.a`: apply changes made to the main document (editor mode)
+- `.s [filename]`: save file (editor mode)
 
 zzdbg also defines the `zzdbg` object that exposes most of its functionality programmatically.
 
