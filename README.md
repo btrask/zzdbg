@@ -4,12 +4,12 @@ zzdbg is a simple but relatively powerful web and Javascript debugger that loads
 
 ### Usage examples
 > `// Use .e to get an element by clicking somewhere on the page. It prints a summary of the element plus all the CSS rules that apply to it.`  
-> `> .e`
-> `(Waiting for click…)`
-> `<img src="https://www.wikipedia.org/portal/wikipedia.org/assets/img/Wikipedia-logo-v2.png"> [ {  }, img { vertical-align: middle; }, hr, img { border: 0px none; }, .central-featured-logo { position: absolute; top: 158px; left: 35px; } ]`
-> `// Use .o to "open" an arbitrary object. _ is the last result, in this case, an <img>.`
-> `> .o _`
-> `[Window "https://www.wikipedia.org/portal/wikipedia.org/assets/img/Wikipedia-logo-v2.png"]`
+> `> .e`  
+> `(Waiting for click…)`  
+> `<img src="https://www.wikipedia.org/portal/wikipedia.org/assets/img/Wikipedia-logo-v2.png"> [ {  }, img { vertical-align: middle; }, hr, img { border: 0px none; }, .central-featured-logo { position: absolute; top: 158px; left: 35px; } ]`  
+> `// Use .o to "open" an arbitrary object. _ is the last result, in this case, an <img>.`  
+> `> .o _`  
+> `[Window "https://www.wikipedia.org/portal/wikipedia.org/assets/img/Wikipedia-logo-v2.png"]`  
 
 // Run arbitrary Javascript
 > 2+2
