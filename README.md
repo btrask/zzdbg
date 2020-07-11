@@ -3,7 +3,7 @@
 zzdbg is a simple but relatively powerful web and Javascript debugger that loads into a web page as a bookmarklet. It's specifically designed for mobile browsers that don't have their own built-in debuggers and which make it too difficult to run your own code.
 
 ### Usage examples
-> `// Use .e to get an element by clicking somewhere on the page. It prints a summary of the element plus all the CSS rules that apply to it.`
+> `// Use .e to get an element by clicking somewhere on the page. It prints a summary of the element plus all the CSS rules that apply to it.`  
 > `> .e`
 > `(Waiting for click…)`
 > `<img src="https://www.wikipedia.org/portal/wikipedia.org/assets/img/Wikipedia-logo-v2.png"> [ {  }, img { vertical-align: middle; }, hr, img { border: 0px none; }, .central-featured-logo { position: absolute; top: 158px; left: 35px; } ]`
