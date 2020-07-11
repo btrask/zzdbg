@@ -15,27 +15,32 @@ Use `.o` to "open" an arbitrary object. `_` is the last result, in this case, an
 > `> .o _`  
 > `[Window "https://www.wikipedia.org/portal/wikipedia.org/assets/img/Wikipedia-logo-v2.png"]`  
 
-// Run arbitrary Javascript
-> 2+2
-4
-> document.title
-"Wikipedia"
+Run arbitrary Javascript
 
-// DOM elements are printed nicely
-> document.querySelector(".sprite")
-<span class="central-textlogo__image sprite svg-Wikipedia_wordmark">
+> `> 2+2`  
+> `4`  
+> `> document.title`  
+> `"Wikipedia"`
 
-// View source of first script in page
-> .o document.scripts[0]
-[Window "javascript:\"zzdbg source view for inline-script.js (Wikipedia)\"; \"...\""]
+DOM elements are printed nicely
 
-// View source of first style sheet in page
-> .o document.styleSheets[0]
-[Window "javascript:\"zzdbg source view for inline-style.css (Wikipedia)\"; \"...\""]
+> `> document.querySelector(".sprite")`  
+> `<span class="central-textlogo__image sprite svg-Wikipedia_wordmark">`
 
-// Look up MDN documentation for arbitrary objects
-> .d document.body
-[Window "https://developer.mozilla.org/en-US/docs/Web/API/HTMLBodyElement"]
+View source of first script in page
+
+> `> .o document.scripts[0]`  
+> `[Window "javascript:\"zzdbg source view for inline-script.js (Wikipedia)\"; \"...\""]`
+
+View source of first style sheet in page
+
+> `> .o document.styleSheets[0]`  
+> `[Window "javascript:\"zzdbg source view for inline-style.css (Wikipedia)\"; \"...\""]`
+
+Look up MDN documentation for arbitrary objects
+
+> `> .d document.body`  
+> `[Window "https://developer.mozilla.org/en-US/docs/Web/API/HTMLBodyElement"]`
 
 ### Special commands
 - `.h`: help
