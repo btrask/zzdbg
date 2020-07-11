@@ -3,30 +3,35 @@
 zzdbg is a simple but relatively powerful web and Javascript debugger that loads into a web page as a bookmarklet. It's specifically designed for mobile browsers that don't have their own built-in debuggers and which make it too difficult to run your own code.
 
 ### Usage examples
-```javascript
+`// Use .e to get an element by clicking somewhere on the page. It prints a summary of the element plus all the CSS rules that apply to it.`
+`> .e`
+`(Waiting for click…)`
+`<img src="https://www.wikipedia.org/portal/wikipedia.org/assets/img/Wikipedia-logo-v2.png"> [ {  }, img { vertical-align: middle; }, hr, img { border: 0px none; }, .central-featured-logo { position: absolute; top: 158px; left: 35px; } ]`
+`// Use .o to "open" an arbitrary object. _ is the last result, in this case, an <img>.`
+`> .o _`
+`[Window "https://www.wikipedia.org/portal/wikipedia.org/assets/img/Wikipedia-logo-v2.png"]`
+
 // Run arbitrary Javascript
 > 2+2
 4
-> window
-[Window "https://example.com"]
-
-// Get the previous result
-> _
-[Window "https://example.com"]
+> document.title
+"Wikipedia"
 
 // DOM elements are printed nicely
-> document.querySelector("#main")
-<div id="main">
+> document.querySelector(".sprite")
+<span class="central-textlogo__image sprite svg-Wikipedia_wordmark">
 
 // View source of first script in page
 > .o document.scripts[0]
+[Window "javascript:\"zzdbg source view for inline-script.js (Wikipedia)\"; \"...\""]
 
 // View source of first style sheet in page
 > .o document.styleSheets[0]
+[Window "javascript:\"zzdbg source view for inline-style.css (Wikipedia)\"; \"...\""]
 
-// Look up MDN documentation for HTMLBodyElement
+// Look up MDN documentation for arbitrary objects
 > .d document.body
-```
+[Window "https://developer.mozilla.org/en-US/docs/Web/API/HTMLBodyElement"]
 
 ### Special commands
 - `.h`: help
@@ -58,7 +63,7 @@ Well, it supports console.log()...
 Breakpoints might be possible in the future using something like [JS-Interpreter](https://github.com/NeilFraser/JS-Interpreter) or [Acorn](https://github.com/acornjs/acorn). However, a bookmarklet-based debugger has the limitation of not necessarily being able to see all of the page's code. The problem is, any code that could possibly call the function where the breakpoint is set also needs to be interpreted/instrumented.
 
 ### Known issues
-In general zzdbg does a pretty good job working within browsers' security rules. On pages where `eval` is blocked by Content-Security-Policy, there is an "eval2" substitute, but it is more limited. If you want to edit a cross-origin script, just run zzdbg again in the new window and it will link up with the main document.
+Some pages have strict Content-Security-Policy settings that block bookmarklets entirely (which I consider a browser bug). Aside from that, zzdbg does a pretty good job working within browsers' security rules. On pages where `eval` is blocked, there is an "eval2" substitute, but it is more limited. If you want to edit a cross-origin script, just run zzdbg again in the new window and it will link up with the main document.
 
 It's only been tested in Firefox Mobile.
 
@@ -68,8 +73,8 @@ The coding style is "idiosyncratic" because I'm writing it entirely on my phone.
 ### Similar projects
 - https://github.com/liriliri/eruda
 - https://github.com/Tencent/vConsole
-- https://www.hnldesign.nl/work/code/mobileconsole-javascript-console-for-mobile-devices/)
-
+- https://www.hnldesign.nl/work/code/mobileconsole-javascript-console-for-mobile-devices/
+- See also https://stackoverflow.com/questions/37256331/is-it-possible-to-open-developer-tools-console-in-chrome-on-android-phone
 
 
 License: MIT

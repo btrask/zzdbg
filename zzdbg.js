@@ -42,7 +42,7 @@ zzdbg.ui = ui;
 ui.className = "zzdbgui";
 ui.innerHTML = '<style>'+
 '.zzdbgui, .zzdbgui * { font:3vw monospace !important; margin:0 !important; padding:0 !important; box-sizing:border-box !important; border-radius:0; background-color:white; color:black; }'+
-'.zzdbgui { position:fixed; left:0; bottom:0; width:100%; height:40%; z-index:100000000; }'+
+'.zzdbgui { position:fixed; left:0; bottom:0; width:100%; height:40%; z-index:100000000000; }'+
 '.zzdbgui textarea, .zzdbgui input { border:0.3vw solid black !important; padding:0 1vw !important; }'+
 '.zzoutput { position:absolute; left:0; top:0; width:100%; height:calc(100% - 6vw); overflow-y:auto; white-space:pre-wrap; }'+
 '.zzbar { position:absolute; left:0; bottom:0; width:100%; height:6vw; }'+
@@ -76,6 +76,7 @@ zzdbg.dnbtn = dnbtn;
 zzdbg.suggest = suggest;
 
 
+zzdbg.lastError = undefined;
 zzdbg.do = function(cmd) {
 var err, res;
 var quiet = false;
@@ -105,6 +106,7 @@ if(!quiet) writeToOutput([err||res], false);
 if(".c" == cmd) output.value = "";
 zzdbg.history.push({ cmd:cmd, res:res, err:err });
 w._ = res;
+zzdbg.lastError = err;
 };
 
 input.onkeydown = function(event) {
@@ -200,10 +202,14 @@ return toArray(x).map(function(rule) { return zzdbg.stringifyFull(rule, depth+1,
 }
 if(x instanceof CSSRule) return x.cssText;
 if(x instanceof CSSStyleDeclaration) return "{ "+(x.cssText||toArray(x).filter(function(attr) { return x[attr]; }).map(function(attr) { return attr+": "+x[attr]; }).join("; "))+" }";
-} catch(e) { if(!(e instanceof SecurityError)) throw e; }
+} catch(e) {
+if(!isSecurityError(e)) throw e;
+if(x.href) return "["+x.constructor.name+' "'+url_summary(x.href)+'"]';
+return "[cross-origin "+x.constructor.name+"]"
+}
 
 function url_summary(url) {
-return 0 == depth ? url : url.replace(/^.*\//, "…");
+return 0 == depth ? url : "…"+(urlBasename(url)||"");
 }
 if(x instanceof HTMLElement) {
 var attrs = [x.tagName.toLowerCase()];
@@ -282,7 +288,7 @@ return results;
 
 
 zzdbg.selectElement = function(root, callback) {
-root = root || d;
+root = root || w;
 root.addEventListener("click", listener, true);
 function listener(event) {
 event.preventDefault();
@@ -296,7 +302,7 @@ function selectElement() {
 zzdbg.selectElement(null, function(elem) {
 zzdbg.selectElementAction(elem);
 var h = zzdbg.history.slice(-1)[0];
-if(h && ".e" == h.cmd) { h.res = elem; w._ = elem; }
+if(h && ".e" == h.cmd) { h.res = w._ = elem; }
 zzdbg.lastSelectedElement = elem;
 });
 zzdbg.info("(Waiting for click…)");
@@ -322,13 +328,15 @@ output.scrollTop = output.scrollHeight;
 
 
 zzdbg.inspect = zzdbg.selectElementAction = function(elem) {
-zzdbg.log(elem, zzdbg.cssRules(elem));
+zzdbg.log(elem, zzdbg.cssRules(elem, true));
 };
-zzdbg.cssRules = function(elem) {
-var results = [];
+zzdbg.cssRules = function(elem, logWarnings) {
+var results = [ elem.style ];
 var sheets = d.styleSheets;
 for(var i = 0; i < sheets.length; i++) {
-var rules = sheets[i].cssRules;
+var rules;
+try { rules = sheets[i].cssRules; }
+catch(e) { rules = []; if(logWarnings) console.info("Some rules omitted", sheets[i]); }
 for(var j = 0; j < rules.length; j++) {
 var matches = false;
 try { matches = elem.matches(rules[j].selectorText); } catch(e) { if(!(e instanceof SyntaxError)) throw e; }
@@ -349,10 +357,9 @@ target = "loader.js";
 str = obj.toString();
 name = name || target;
 } else if(obj instanceof HTMLScriptElement) {
-if(obj.src) url = obj.src;
-else str = obj.textContent;
 if(obj == zzdbg.script) name = name || "zzdbg.js";
-name = name || "untitled.js";
+if(obj.src) { url = obj.src; name = name || urlBasename(obj.src) || "untitled.js"; }
+else { str = obj.textContent; name = name || "inline-script.js"; }
 } else if(obj instanceof HTMLStyleElement) {
 str = obj.textContent;
 } else if(obj instanceof CSSStyleSheet) {
@@ -375,7 +382,9 @@ function findEditor(obj) {
 if(!obj) return;
 var ed = zzdbg.editors;
 for(var i = 0; i < ed.length; i++) {
-if(ed[i].window.closed) { ed.splice(i, 1); i--; continue; }
+var closedOrDead = true;
+try { closedOrDead = ed[i].window.closed; } catch(e) {}
+if(closedOrDead) { ed.splice(i, 1); i--; continue; }
 if(ed[i].window === obj) return ed[i].target;
 if(ed[i].target === obj) return ed[i].window;
 }
@@ -387,6 +396,7 @@ if(!url && !isString(str)) return null;
 var title = "zzdbg source view for "+(name||"untitled")+" ("+d.title+")";
 var jsurl = 'javascript:'+JSON.stringify(title)+'; "..."';
 win = zzdbg.openWindow(url || jsurl, "editor");
+if(!win) throw new Error("couldn't create window");
 try { win.onload = setupWin; }
 catch(e) { zzdbg.info("(To edit, run zzdbg again in the new window)"); }
 function setupWin() {
@@ -418,10 +428,10 @@ return sendRes("target does not support editing");
 } else if("loader.js" == target) {
 zzdbg.loader = zzdbg.evalLocal("("+src+")");
 } else if(target instanceof HTMLScriptElement) {
+zzdbg.evalLocal(src);
 if(target.src) target["data-zzdbg-src"] = target.src;
 target.removeAttribute("src");
 target.textContent = src;
-zzdbg.evalLocal(src);
 } else {
 zzdbg.log("apply to unsupported target", target);
 return sendRes("unsupported target");
@@ -434,7 +444,7 @@ if(!url) return null;
 url = String(url);
 var rnd = Math.random().toString(36).slice(2);
 var win = w.open(url, "zzdbg-"+(type||"window")+"-"+rnd);
-win.initialLocation = url;
+if(win) win.initialLocation = url;
 return win;
 };
 zzdbg.bookmarklet = function() {
@@ -490,6 +500,15 @@ function parseURL(str) {
 try { return new URL(str); }
 catch(e) { return null; }
 }
+function urlBasename(str) {
+var url = parseURL(str) || {};
+var x = /([\w%._-]*)\/?$/.exec(url.pathname);
+return x && x[1];
+}
+function isSecurityError(e) {
+return "SecurityError" == e.name;
+}
+
 
 zzdbg.log("zzdbg - type .h for help");
 
@@ -527,10 +546,10 @@ zzdbg.eval = function(src, cb) {
 sendWindowRequest(w.opener, "eval", cmd, function(res) {});
 };
 if(!zzdbg.editor) {
-zzdbg.filename = w.zzdbg_filename || w.location.pathname.replace(/^.*\//, "");
+zzdbg.filename = w.zzdbg_filename || urlBasename(w.location.href) || "untitled";
 zzdbg.editor = d.createElement("textarea");
 zzdbg.editor.className = "zzeditor";
-d.title = "zzdbg source view for "+d.title;
+d.title = "zzdbg source view for "+zzdbg.filename;
 var pre = d.querySelector("pre");
 zzdbg.editor.value = pre.textContent;
 pre.replaceWith(zzdbg.editor);
@@ -570,7 +589,7 @@ zzdbg.doc = "Commands:"+
 "\n\t.p (expr) - list properties"+
 "\n\t.e - select element"+
 "\n\t.a - apply changes to main document (editor mode)"+
-"\n\t.s (filename) - save file (editor mode)"+
+"\n\t.s [filename] - save file (editor mode)"+
 "";
 input.focus();
 })();
