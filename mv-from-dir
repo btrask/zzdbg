@@ -1,0 +1,8 @@
+#!/bin/sh
+if [ "$#" -ne 1 ]; then
+	echo "Usage: $0 downloads-path"
+	echo "After editing zzdbg with itself, use .s to save the file, then this command to move it back to this repository."
+	exit 1;
+fi
+dir="$1"
+mv --backup "$dir/zzdbg.js" "$dir/bookmarklet.js" "$dir/loader.js" ./

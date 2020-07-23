@@ -42,15 +42,15 @@ zzdbg.ui = ui;
 ui.className = "zzdbgui";
 ui.innerHTML = '<style>'+
 '.zzdbgui, .zzdbgui * { font:3vw monospace !important; margin:0 !important; padding:0 !important; box-sizing:border-box !important; border-radius:0; background-color:white; color:black; }'+
-'.zzdbgui { position:fixed; left:0; bottom:0; width:100%; height:40%; z-index:100000000000; }'+
+'.zzdbgui { position:fixed; left:0; bottom:0; width:100%; height:40%; z-index:100000000000; resize:vertical; overflow:hidden; }'+
 '.zzdbgui textarea, .zzdbgui input { border:0.3vw solid black !important; padding:0 1vw !important; }'+
 '.zzoutput { position:absolute; left:0; top:0; width:100%; height:calc(100% - 6vw); overflow-y:auto; white-space:pre-wrap; }'+
 '.zzbar { position:absolute; left:0; bottom:0; width:100%; height:6vw; }'+
 '.zzbar * { position:absolute; top:0; height:100%; }'+
-'.zzinput { left:0; width:calc(100% - 20vw) !important; }'+
+'.zzinput { left:0; width:calc(100% - 22vw) !important; }'+
 '.zzdnbtn, .zzupbtn { width:10vw; font-size:1em; text-align:center; }'+
-'.zzdnbtn { right:10vw; }'+
-'.zzupbtn { right:0; }'+
+'.zzdnbtn { right:12vw; }'+
+'.zzupbtn { right:2vw; }'+
 '.zzsuggest { position:fixed; bottom:5vw; right:25vw; border:0.3vw solid black; overflow:hidden auto; text-overflow:ellipsis; }'+
 '.zzsuggest > * { padding:0.5vw 2vw !important; }'+
 '.zzeditor { width:100%; height:60%; font:3vw monospace; }'+
@@ -97,6 +97,7 @@ quiet = true;
 zzdbg.applyChanges();
 quiet = true;
 } else if(/^\.s\b/.test(cmd)) {
+if(!zzdbg.editor) throw new Error("not in edit mode");
 zzdbg.filename = cmd.replace(/^\.s\s*|\s*$/g, "") || zzdbg.filename;
 zzdbg.dl({ filename: zzdbg.filename || "untitled.txt", url:"data:text/plain,"+encodeURI(zzdbg.editor.value) });
 } else res = zzdbg.evalLocal(cmd.replace(/^javascript:/, ""));
@@ -170,38 +171,34 @@ if(undefined === depth || undefined === inlineStrings) throw new Error("stringif
 
 if(zzdbg.stringify) {
 x = zzdbg.stringify(x, depth, inlineStrings);
-if(isString(x)) return x;
+if(isa(x, String)) return x;
 }
 
 if(depth >= zzdbg.stringifyDepth) return "…";
 if(depth >= 1 && "function" == typeof x) return "[function …]";
 
-if(x instanceof Text) {
+if(isa(x, Text)) {
 x = x.textContent.replace(/^\s+|\s+$/g, "");
 if(!x) return '" "';
 }
 
-if(isString(x)) {
+if(isa(x, String)) {
 return inlineStrings && 0 == depth ? x : JSON.stringify(x);
 }
 
-if(x instanceof NodeList || x instanceof NamedNodeMap || x instanceof StyleSheetList || x instanceof HTMLCollection) x = toArray(x);
+if(isa(x, NodeList) || isa(x, NamedNodeMap) || isa(x, StyleSheetList) || isa(x, HTMLCollection)) x = toArray(x);
 
 if(Array.isArray(x)) {
-if(depth >= zzdbg.stringifyDepth-1) return "[ ("+x.length+" item(s)) ]";
+if(depth >= zzdbg.stringifyDepth-1) return "[ ("+x.length+" items) ]";
 return "[ "+x.map(function(y) { return zzdbg.stringifyFull(y, depth+1, inlineStrings); }).join(", ")+" ]";
 }
 
-if(x instanceof Window) return "[Window "+zzdbg.stringifyFull(x.initialLocation||x.location.href, depth+1, inlineStrings)+"]";
+if(isa(x, Window)) return "[Window "+zzdbg.stringifyFull(x.initialLocation||x.location.href, depth+1, inlineStrings)+"]";
 
 try {
-if(x instanceof CSSStyleSheet) return zzdbg.stringifyFull(x.cssRules, depth, inlineStrings);
-if(x instanceof CSSRuleList) {
-if(depth >= 1) return "["+x.length+" CSS rule(s)]";
-return toArray(x).map(function(rule) { return zzdbg.stringifyFull(rule, depth+1, inlineStrings); }).join("\n");
-}
-if(x instanceof CSSRule) return x.cssText;
-if(x instanceof CSSStyleDeclaration) return "{ "+(x.cssText||toArray(x).filter(function(attr) { return x[attr]; }).map(function(attr) { return attr+": "+x[attr]; }).join("; "))+" }";
+if(isa(x, CSSStyleSheet) || isa(x, CSSRuleList)) return "["+x.constructor.name+" with "+(x.cssRules||x).length+" rules]";
+if(isa(x, CSSRule)) return x.cssText;
+if(isa(x, CSSStyleDeclaration)) return "{ "+(x.cssText||toArray(x).filter(function(attr) { return x[attr]; }).map(function(attr) { return attr+": "+x[attr]; }).join("; "))+" }";
 } catch(e) {
 if(!isSecurityError(e)) throw e;
 if(x.href) return "["+x.constructor.name+' "'+url_summary(x.href)+'"]';
@@ -211,16 +208,14 @@ return "[cross-origin "+x.constructor.name+"]"
 function url_summary(url) {
 return 0 == depth ? url : "…"+(urlBasename(url)||"");
 }
-if(x instanceof HTMLElement) {
-var attrs = [x.tagName.toLowerCase()];
-if(x.id) attrs.push('id="'+x.id+'"');
-else if(x.href) attrs.push('href="'+url_summary(x.href)+'"');
-else if(x.src) attrs.push('src="'+url_summary(x.src)+'"');
-else if(x.className) attrs.push('class="'+x.className+'"');
-return "<"+attrs.join(" ")+">";
+if(isa(x, HTMLElement)) {
+var attrs = toArray(x.attributes).filter(function(attr) { return 0 == depth || /id|class|href|src/i.test(attr.name); }).map(function(attr) { return zzdbg.stringifyFull(attr, depth+1, false); });
+return "<"+[x.tagName.toLowerCase()].concat(attrs).join(" ")+">"+(0==depth ? " "+zzdbg.stringifyFull(zzdbg.cssRules(x), depth, false) : "");
 }
-
-if(x instanceof Attr) return x.name+'="'+x.value+'"';
+if(isa(x, Attr)) {
+if(/href|src|background/i.test(x.name)) return x.name+'="'+url_summary(x.value)+'"';
+return x.name+'="'+x.value+'"';
+}
 
 var str = null;
 if(null === x || undefined === x) str = String(x);
@@ -228,7 +223,7 @@ try { if(null === str && x.__proto__ && "function" == typeof x.__proto__.toStrin
 } catch(e){}
 if(null === str) str = Object.prototype.toString.call(x);
 
-if(!isString(x) && "[object Object]" == str) return "{ "+Object.keys(x).map(function(key) { return key+": "+zzdbg.stringifyFull(x[key], depth+1, inlineStrings); }).join(", ")+" }";
+if(!isa(x, String) && "[object Object]" == str) return "{ "+Object.keys(x).map(function(key) { return key+": "+zzdbg.stringifyFull(x[key], depth+1, inlineStrings); }).join(", ")+" }";
 
 return str;
 };
@@ -325,13 +320,11 @@ try { output.value += array.map(function(arg) { return zzdbg.stringifyFull(arg, 
 catch(e) { output.value += e+" (zzdbg stringify)"; }
 output.scrollTop = output.scrollHeight;
 }
+zzdbg.selectElementAction = zzdbg.log;
 
 
-zzdbg.inspect = zzdbg.selectElementAction = function(elem) {
-zzdbg.log(elem, zzdbg.cssRules(elem, true));
-};
 zzdbg.cssRules = function(elem, logWarnings) {
-var results = [ elem.style ];
+var results = [elem.style];
 var sheets = d.styleSheets;
 for(var i = 0; i < sheets.length; i++) {
 var rules;
@@ -339,7 +332,7 @@ try { rules = sheets[i].cssRules; }
 catch(e) { rules = []; if(logWarnings) console.info("Some rules omitted", sheets[i]); }
 for(var j = 0; j < rules.length; j++) {
 var matches = false;
-try { matches = elem.matches(rules[j].selectorText); } catch(e) { if(!(e instanceof SyntaxError)) throw e; }
+try { matches = elem.matches(rules[j].selectorText); } catch(e) { if(!isa(e, SyntaxError)) throw e; }
 if(matches) results.push(rules[j]);
 }
 }
@@ -348,7 +341,7 @@ return results;
 
 
 zzdbg.open = function(obj) {
-return zzdbg.viewAsSource(obj) || zzdbg.openWindow(parseURL(obj) || obj.href || obj.src);
+return zzdbg.viewAsSource(obj) || zzdbg.openWindow(parseURL(obj) || obj.href || obj.src || (obj.attributes && obj.attributes.background.value));
 };
 zzdbg.viewAsSource = function(obj, name) {
 var target = obj, url, str;
@@ -356,18 +349,18 @@ if(obj == zzdbg.loader) {
 target = "loader.js";
 str = obj.toString();
 name = name || target;
-} else if(obj instanceof HTMLScriptElement) {
+} else if(isa(obj, HTMLScriptElement)) {
 if(obj == zzdbg.script) name = name || "zzdbg.js";
 if(obj.src) { url = obj.src; name = name || urlBasename(obj.src) || "untitled.js"; }
 else { str = obj.textContent; name = name || "inline-script.js"; }
-} else if(obj instanceof HTMLStyleElement) {
+} else if(isa(obj, HTMLStyleElement)) {
 str = obj.textContent;
-} else if(obj instanceof CSSStyleSheet) {
+} else if(isa(obj, CSSStyleSheet)) {
 if(obj.href) url = obj.href;
 else str = obj.ownerNode.textContent;
-} else if(obj instanceof HTMLLinkElement) {
+} else if(isa(obj, HTMLLinkElement)) {
 url = obj.href;
-} else if(isString(obj)) {
+} else if(isa(obj, String)) {
 var parsed = parseURL(obj);
 if(!parsed) str = obj;
 else if("javascript:" == parsed.protocol) {
@@ -392,7 +385,7 @@ if(ed[i].target === obj) return ed[i].window;
 function openEditor(target, url, str, name) {
 var win = findEditor(target);
 if(win) return win.focus(), win;
-if(!url && !isString(str)) return null;
+if(!url && !isa(str, String)) return null;
 var title = "zzdbg source view for "+(name||"untitled")+" ("+d.title+")";
 var jsurl = 'javascript:'+JSON.stringify(title)+'; "..."';
 win = zzdbg.openWindow(url || jsurl, "editor");
@@ -413,7 +406,7 @@ zzdbg.editors.push({ window:win, target:target });
 return win;
 }
 zzdbg.applyChanges = function() {
-if(!zzdbg.editor) throw new Error("Not in edit mode");
+if(!zzdbg.editor) throw new Error("not in edit mode");
 var src = zzdbg.editor.value;
 sendWindowRequest(w.opener, "apply", { src:src }, function(res) { zzdbg.info("Apply changes:", res || "success"); });
 };
@@ -421,17 +414,18 @@ reqHandlers.apply = function(win, payload, sendRes) {
 var target = findEditor(win);
 if(undefined === target) return sendRes("unknown target");
 var src = payload.src;
-if(!isString(src)) return sendRes("not a string");
+if(!isa(src, String)) return sendRes("not a string");
 try {
 if(!target) {
 return sendRes("target does not support editing");
 } else if("loader.js" == target) {
 zzdbg.loader = zzdbg.evalLocal("("+src+")");
-} else if(target instanceof HTMLScriptElement) {
-zzdbg.evalLocal(src);
+} else if(isa(target, HTMLScriptElement)) {
 if(target.src) target["data-zzdbg-src"] = target.src;
 target.removeAttribute("src");
+target.textContent = '"nop"';
 target.textContent = src;
+if(d.contains(target)) zzdbg.evalLocal(src);
 } else {
 zzdbg.log("apply to unsupported target", target);
 return sendRes("unsupported target");
@@ -453,7 +447,7 @@ return 'javascript:('+zzdbg.loader.toString()+')('+JSON.stringify("("+zzdbg_main
 
 zzdbg.wgetcmd = function(dls) {
 if(!Array.isArray(dls)) dls = toArray(arguments);
-return dls.map(function(dl){ return "wget --adjust-extension " + (isString(dl) ? safe_shell_arg(dl) : safe_shell_arg(dl.url)+" -O '"+safe_filename(dl.filename)+"'"); }).join("; ");
+return dls.map(function(dl){ return "wget --adjust-extension " + (isa(dl, String) ? safe_shell_arg(dl) : safe_shell_arg(dl.url)+" -O '"+safe_filename(dl.filename)+"'"); }).join("; ");
 };
 function safe_shell_arg(shell_arg) {
 return "'"+shell_arg.replace(/\'/g, "\\'")+"'";
@@ -467,8 +461,8 @@ var a = d.createElement("a");
 ui.appendChild(a);
 /*a.target = "_blank";*/
 for(var i = 0; i < dls.length; i++) {
-a.download = (isString(dls[i]) ? "" : dls[i].filename);
-a.href = (isString(dls[i]) ? dls[i] : dls[i].url);
+a.download = (isa(dls[i], String) ? "" : dls[i].filename);
+a.href = (isa(dls[i], String) ? dls[i] : dls[i].url);
 a.click();
 }
 a.remove();
@@ -479,17 +473,14 @@ function has(a, b) {
 return Object.prototype.hasOwnProperty.call(a, b);
 }
 function exchange(a, b) {
-for(var prop in a) if(has(a, prop)) {
-var swap = a[prop];
-a[prop] = b[prop];
-b[prop] = swap;
-}
+for(var p in a) if(has(a, p)) { var swap = a[p]; a[p] = b[p]; b[p] = swap; }
 }
 function toArray(x) {
 return Array.prototype.slice.call(x);
 }
-function isString(x) {
-return "string" == typeof x || x instanceof String;
+function isa(x, y) {
+if(String == y && "string" == typeof x) return true;
+return x instanceof y;
 }
 function escapeHTML(str) {
 var x = d.createElement("div");
@@ -497,7 +488,8 @@ x.textContent = str;
 return x.innerHTML;
 }
 function parseURL(str) {
-try { return new URL(str); }
+if(!isa(str, String)) return null;
+try { return new URL(str, document.baseURI); }
 catch(e) { return null; }
 }
 function urlBasename(str) {
@@ -508,7 +500,6 @@ return x && x[1];
 function isSecurityError(e) {
 return "SecurityError" == e.name;
 }
-
 
 zzdbg.log("zzdbg - type .h for help");
 
@@ -589,7 +580,7 @@ zzdbg.doc = "Commands:"+
 "\n\t.p (expr) - list properties"+
 "\n\t.e - select element"+
 "\n\t.a - apply changes to main document (editor mode)"+
-"\n\t.s [filename] - save file (editor mode)"+
+"\n\t.s (filename) - save file (editor mode)"+
 "";
 input.focus();
 })();

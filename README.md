@@ -71,10 +71,12 @@ Here is the full self-editing workflow:
 ### Is it really a debugger if it doesn't support breakpoints?
 Well, it supports console.log()...
 
-Unfortunately, it seems nearly impossible to support breakpoints from within a page, simply because it can't reliably get all JS code across origins. Any code that could possibly call the function where the breakpoint is set also needs to be instrumented or interpreted.
+Real breakpoints are very tricky to support purely from inside the page. No other project does it to my knowledge. That said I'm still interested in finding a way that's feasible.
 
 ### Known issues
 Some pages have strict Content-Security-Policy settings that block bookmarklets entirely (which I consider a browser bug). Aside from that, zzdbg does a pretty good job working within browsers' security rules. On pages where `eval` is blocked, there is an "eval2" substitute, but it is more limited. If you want to edit a cross-origin script, just run zzdbg again in the new window and it will link up with the main document.
+
+The text editor in edit mode is just a plain `<textarea>`.
 
 It's only been tested in Firefox Mobile.
 
