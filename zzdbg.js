@@ -41,6 +41,7 @@ zzdbg.ui = ui;
 
 ui.className = "zzdbgui";
 ui.innerHTML = '<style>'+
+'.zzdbg, * { pointer-events:auto !important; }'+
 '.zzdbgui, .zzdbgui * { font:3vw monospace !important; margin:0 !important; padding:0 !important; box-sizing:border-box !important; border-radius:0; background-color:white; color:black; }'+
 '.zzdbgui { position:fixed; left:0; bottom:0; width:100%; height:40%; z-index:100000000000; resize:vertical; overflow:hidden; }'+
 '.zzdbgui textarea, .zzdbgui input { border:0.3vw solid black !important; padding:0 1vw !important; }'+
@@ -52,6 +53,7 @@ ui.innerHTML = '<style>'+
 '.zzdnbtn { right:12vw; }'+
 '.zzupbtn { right:2vw; }'+
 '.zzsuggest { position:fixed; bottom:5vw; right:25vw; border:0.3vw solid black; overflow:hidden auto; text-overflow:ellipsis; }'+
+'.zzsuggest[hidden] { display:none !important; }'+
 '.zzsuggest > * { padding:0.5vw 2vw !important; }'+
 '.zzeditor { width:100%; height:60%; font:3vw monospace; }'+
 '</style>'+
@@ -186,14 +188,17 @@ if(isa(x, String)) {
 return inlineStrings && 0 == depth ? x : JSON.stringify(x);
 }
 
-if(isa(x, NodeList) || isa(x, NamedNodeMap) || isa(x, StyleSheetList) || isa(x, HTMLCollection)) x = toArray(x);
+if(isa(x, NodeList) || isa(x, NamedNodeMap) || isa(x, StyleSheetList) || isa(x, HTMLCollection) || isa(x, HTMLAllCollection)) x = toArray(x);
 
-if(Array.isArray(x)) {
+if(isa(x, Array)) {
 if(depth >= zzdbg.stringifyDepth-1) return "[ ("+x.length+" items) ]";
-return "[ "+x.map(function(y) { return zzdbg.stringifyFull(y, depth+1, inlineStrings); }).join(", ")+" ]";
+return "[ "+x.map(function(y, i) { return i+": "+zzdbg.stringifyFull(y, depth+1, inlineStrings); }).join(", ")+" ]";
 }
 
-if(isa(x, Window)) return "[Window "+zzdbg.stringifyFull(x.initialLocation||x.location.href, depth+1, inlineStrings)+"]";
+if(isa(x, Window)) {
+try { return "[Window "+zzdbg.stringifyFull(x.zzdbg_initialLocation||x.location.href, depth+1, inlineStrings)+"]"; }
+catch(e) { if(!isSecurityError(e)) throw e; return "[Cross-origin window for "+zzdbg.stringifyFull(zzdbg.frameElement(x), depth+1, false)+"]"; }
+}
 
 try {
 if(isa(x, CSSStyleSheet) || isa(x, CSSRuleList)) return "["+x.constructor.name+" with "+(x.cssRules||x).length+" rules]";
@@ -209,11 +214,12 @@ function url_summary(url) {
 return 0 == depth ? url : "…"+(urlBasename(url)||"");
 }
 if(isa(x, HTMLElement)) {
-var attrs = toArray(x.attributes).filter(function(attr) { return 0 == depth || /id|class|href|src/i.test(attr.name); }).map(function(attr) { return zzdbg.stringifyFull(attr, depth+1, false); });
+var attrs = toArray(x.attributes).filter(function(attr) { return 0 == depth || /^(id|class|href|src)$/i.test(attr.name); }).map(function(attr) { return zzdbg.stringifyFull(attr, depth, false); });
+if(attrs.length < x.attributes.length) attrs.push("…");
 return "<"+[x.tagName.toLowerCase()].concat(attrs).join(" ")+">"+(0==depth ? " "+zzdbg.stringifyFull(zzdbg.cssRules(x), depth, false) : "");
 }
 if(isa(x, Attr)) {
-if(/href|src|background/i.test(x.name)) return x.name+'="'+url_summary(x.value)+'"';
+if(/^(href|src|srcset|background|poster)$/i.test(x.name)) return x.name+'="'+url_summary(x.value)+'"';
 return x.name+'="'+x.value+'"';
 }
 
@@ -260,7 +266,7 @@ if(!path || !path[0]) throw new Error();
 
 if("CSS2Properties" == path[0]) path[0] = "CSSStyleDeclaration";
 
-if(/^encode|^Object$|^Array$|^Boolean$|^Number$|^BigInt$|^Math$|^Date$|^String$|^RegExp$|Error$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/"+path.join("/");
+if(/^encode|^Object$|^Array$|^Boolean$|^Number$|^BigInt$|^Math$|^Date$|^String$|^RegExp$|Error$|Function$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/"+path.join("/");
 else if(/^CSS|^DOM|^File|^HTML|^Node|^NamedNode|^RTC|^XML|^Attr$|^ChildNode$|^Document$|^IDBFactory$|^URL$|^Window$|Event|Style|Element$|List$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/API/"+path.join("/");
 else url = "https://developer.mozilla.org/en-US/search?q="+path.join(".");
 
@@ -282,13 +288,19 @@ return results;
 };
 
 
-zzdbg.selectElement = function(root, callback) {
-root = root || w;
-root.addEventListener("click", listener, true);
+zzdbg.cancelSelect = null;
+zzdbg.selectElement = function(roots, callback) {
+roots = isa(roots, Array) ? roots : roots ? [roots] : [w].concat(toArray(w));
+for(var i = 0; i < roots.length; i++) try { roots[i].addEventListener("click", listener, true); } catch(e) { zzdbg.info("Unable to install handler", roots[i]); }
+if(zzdbg.cancelSelect) zzdbg.cancelSelect();
+zzdbg.cancelSelect = function() {
+for(var i = 0; i < roots.length; i++) try { roots[i].removeEventListener("click", listener, true); } catch(e) {}
+zzdbg.cancelSelect = null;
+};
 function listener(event) {
 event.preventDefault();
 event.stopPropagation();
-root.removeEventListener("click", listener, true);
+zzdbg.cancelSelect();
 if(callback) callback(event.target);
 }
 };
@@ -323,17 +335,19 @@ output.scrollTop = output.scrollHeight;
 zzdbg.selectElementAction = zzdbg.log;
 
 
-zzdbg.cssRules = function(elem, logWarnings) {
-var results = [elem.style];
+zzdbg.cssRules = function(obj) {
+var elems = isa(obj, String) ? document.querySelectorAll(obj) : obj.length >= 0 ? obj : [obj];
+var results = [];
 var sheets = d.styleSheets;
 for(var i = 0; i < sheets.length; i++) {
 var rules;
 try { rules = sheets[i].cssRules; }
-catch(e) { rules = []; if(logWarnings) console.info("Some rules omitted", sheets[i]); }
+catch(e) { results.push(sheets[i]); continue; }
 for(var j = 0; j < rules.length; j++) {
-var matches = false;
-try { matches = elem.matches(rules[j].selectorText); } catch(e) { if(!isa(e, SyntaxError)) throw e; }
-if(matches) results.push(rules[j]);
+for(var k = 0; k < elems.length; k++) {
+try { if(elems[k].matches(rules[j].selectorText)) { results.push(rules[j]); break; } }
+catch(e) { if(!isa(e, SyntaxError)) throw e+k; }
+}
 }
 }
 return results;
@@ -341,7 +355,14 @@ return results;
 
 
 zzdbg.open = function(obj) {
-return zzdbg.viewAsSource(obj) || zzdbg.openWindow(parseURL(obj) || obj.href || obj.src || (obj.attributes && obj.attributes.background.value));
+var win = zzdbg.viewAsSource(obj);
+if(win) return win;
+obj = zzdbg.frameElement(obj) || obj;
+var url = parseURL(obj) || (obj.location||{}).href || obj.href || obj.src || ((obj.attributes||{}).background||{}).value;
+if(!url) return null;
+url = String(url);
+if(/^javascript:/.test(url)) return zzdbg.viewAsSource(url);
+return zzdbg.openWindow(url);
 };
 zzdbg.viewAsSource = function(obj, name) {
 var target = obj, url, str;
@@ -434,11 +455,12 @@ sendRes(null);
 } catch(e) { sendRes(String(e)); }
 };
 zzdbg.openWindow = function(url, type) {
-if(!url) return null;
-url = String(url);
+if(isa(url, URL)) url = String(url);
+if(!isa(url, String)) throw new TypeError("expected string/URL");
 var rnd = Math.random().toString(36).slice(2);
 var win = w.open(url, "zzdbg-"+(type||"window")+"-"+rnd);
-if(win) win.initialLocation = url;
+try { if(win) win.zzdbg_initialLocation = url; }
+catch(e) {}
 return win;
 };
 zzdbg.bookmarklet = function() {
@@ -446,7 +468,7 @@ return 'javascript:('+zzdbg.loader.toString()+')('+JSON.stringify("("+zzdbg_main
 };
 
 zzdbg.wgetcmd = function(dls) {
-if(!Array.isArray(dls)) dls = toArray(arguments);
+if(!isa(dls, Array)) dls = toArray(arguments);
 return dls.map(function(dl){ return "wget --adjust-extension " + (isa(dl, String) ? safe_shell_arg(dl) : safe_shell_arg(dl.url)+" -O '"+safe_filename(dl.filename)+"'"); }).join("; ");
 };
 function safe_shell_arg(shell_arg) {
@@ -456,7 +478,7 @@ function safe_filename(filename) {
 return filename.replace(/[^a-zA-Z0-9._ \[\]\{\}-]/g, "_");
 }
 zzdbg.dl = function(dls) {
-if(!Array.isArray(dls)) dls = toArray(arguments);
+if(!isa(dls, Array)) dls = toArray(arguments);
 var a = d.createElement("a");
 ui.appendChild(a);
 /*a.target = "_blank";*/
@@ -466,6 +488,15 @@ a.href = (isa(dls[i], String) ? dls[i] : dls[i].url);
 a.click();
 }
 a.remove();
+};
+
+zzdbg.frameElement = function(win) {
+if(!isa(win, Window)) return null;
+try { return win.frameElement; }
+catch(e) { if(!isSecurityError(e)) throw e; }
+var frames = document.querySelectorAll("frame, iframe");
+for(var i = 0; i < frames.length; i++) if(frames[i].contentWindow == win) return frames[i];
+return null;
 };
 
 
@@ -479,6 +510,7 @@ function toArray(x) {
 return Array.prototype.slice.call(x);
 }
 function isa(x, y) {
+if(Array == y) return Array.isArray(x);
 if(String == y && "string" == typeof x) return true;
 return x instanceof y;
 }
