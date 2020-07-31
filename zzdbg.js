@@ -42,20 +42,20 @@ zzdbg.ui = ui;
 ui.className = "zzdbgui";
 ui.innerHTML = '<style>'+
 '.zzdbg, * { pointer-events:auto !important; }'+
-'.zzdbgui, .zzdbgui * { font:3vw monospace !important; margin:0 !important; padding:0 !important; box-sizing:border-box !important; border-radius:0; background-color:white; color:black; }'+
-'.zzdbgui { position:fixed; left:0; bottom:0; width:100%; height:40%; z-index:100000000000; resize:vertical; overflow:hidden; }'+
-'.zzdbgui textarea, .zzdbgui input { border:0.3vw solid black !important; padding:0 1vw !important; }'+
+'.zzdbgui, .zzdbgui *, .zzeditor { font:3vw monospace !important; margin:0 !important; padding:0 !important; box-sizing:border-box !important; border-radius:0; background-color:white; color:black; }'+
+'.zzdbgui { position:fixed; left:0; bottom:0; width:100%; height:40%; z-index:100000000000; }'+
+'.zzdbgui textarea, .zzdbgui input, .zzeditor { border:0.3vw solid black !important; padding:0 1vw !important; outline:none; resize:none; }'+
 '.zzoutput { position:absolute; left:0; top:0; width:100%; height:calc(100% - 6vw); overflow-y:auto; white-space:pre-wrap; }'+
 '.zzbar { position:absolute; left:0; bottom:0; width:100%; height:6vw; }'+
 '.zzbar * { position:absolute; top:0; height:100%; }'+
-'.zzinput { left:0; width:calc(100% - 22vw) !important; }'+
+'.zzinput { left:0; width:calc(100% - 20vw) !important; }'+
 '.zzdnbtn, .zzupbtn { width:10vw; font-size:1em; text-align:center; }'+
-'.zzdnbtn { right:12vw; }'+
-'.zzupbtn { right:2vw; }'+
-'.zzsuggest { position:fixed; bottom:5vw; right:25vw; border:0.3vw solid black; overflow:hidden auto; text-overflow:ellipsis; }'+
+'.zzdnbtn { right:10vw; }'+
+'.zzupbtn { right:0vw; }'+
+'.zzsuggest { position:fixed; bottom:5vw; right:25vw; border:0.3vw solid black; overflow-x:hidden; overflow-y:auto; }'+
 '.zzsuggest[hidden] { display:none !important; }'+
 '.zzsuggest > * { padding:0.5vw 2vw !important; }'+
-'.zzeditor { width:100%; height:60%; font:3vw monospace; }'+
+'.zzeditor { width:100%; height:60%; }'+
 '</style>'+
 '<textarea class="zzoutput" readonly="true"></textarea>'+
 '<div class="zzbar">'+
@@ -195,7 +195,7 @@ if(depth >= zzdbg.stringifyDepth-1) return "[ ("+x.length+" items) ]";
 return "[ "+x.map(function(y, i) { return i+": "+zzdbg.stringifyFull(y, depth+1, inlineStrings); }).join(", ")+" ]";
 }
 
-if(isa(x, Window)) {
+if(isa2(x, Window)) {
 try { return "[Window "+zzdbg.stringifyFull(x.zzdbg_initialLocation||x.location.href, depth+1, inlineStrings)+"]"; }
 catch(e) { if(!isSecurityError(e)) throw e; return "[Cross-origin window for "+zzdbg.stringifyFull(zzdbg.frameElement(x), depth+1, false)+"]"; }
 }
@@ -223,15 +223,14 @@ if(/^(href|src|srcset|background|poster)$/i.test(x.name)) return x.name+'="'+url
 return x.name+'="'+x.value+'"';
 }
 
-var str = null;
+var str;
 if(null === x || undefined === x) str = String(x);
-try { if(null === str && x.__proto__ && "function" == typeof x.__proto__.toString) str = String(x.__proto__.toString.call(x));
-} catch(e){}
-if(null === str) str = Object.prototype.toString.call(x);
+try { if(!str && x.__proto__ && "function" == typeof x.__proto__.toString) str = String(x.__proto__.toString.call(x)); }
+catch(e) { if(isSecurityError(e)) str = "[cross-origin object]"; }
+if(!str) str = Object.prototype.toString.call(x);
 
-if(!isa(x, String) && "[object Object]" == str) return "{ "+Object.keys(x).map(function(key) { return key+": "+zzdbg.stringifyFull(x[key], depth+1, inlineStrings); }).join(", ")+" }";
-
-return str;
+if(str && "[object Object]" != str) return str;
+return "{ "+Object.keys(x).map(function(key) { return key+": "+zzdbg.stringifyFull(x[key], depth+1, inlineStrings); }).join(", ")+" }";
 };
 
 
@@ -411,10 +410,9 @@ var title = "zzdbg source view for "+(name||"untitled")+" ("+d.title+")";
 var jsurl = 'javascript:'+JSON.stringify(title)+'; "..."';
 win = zzdbg.openWindow(url || jsurl, "editor");
 if(!win) throw new Error("couldn't create window");
-try { win.onload = setupWin; }
+try { setupWin(); win.onload = setupWin; }
 catch(e) { zzdbg.info("(To edit, run zzdbg again in the new window)"); }
 function setupWin() {
-win.onload = null;
 if(!url) {
 win.document.title = name || "";
 win.document.body.innerHTML = "<pre></pre>";
@@ -514,6 +512,11 @@ if(Array == y) return Array.isArray(x);
 if(String == y && "string" == typeof x) return true;
 return x instanceof y;
 }
+function isa2(x, y) {
+if(isa(x, y)) return true;
+try { return x.constructor.name == y.name; }
+catch(e) { return false; }
+}
 function escapeHTML(str) {
 var x = d.createElement("div");
 x.textContent = str;
@@ -526,7 +529,7 @@ catch(e) { return null; }
 }
 function urlBasename(str) {
 var url = parseURL(str) || {};
-var x = /([\w%._-]*)\/?$/.exec(url.pathname);
+var x = /([\w%._-]*\/?)$/.exec(url.pathname);
 return x && x[1];
 }
 function isSecurityError(e) {
@@ -573,7 +576,7 @@ zzdbg.filename = w.zzdbg_filename || urlBasename(w.location.href) || "untitled";
 zzdbg.editor = d.createElement("textarea");
 zzdbg.editor.className = "zzeditor";
 d.title = "zzdbg source view for "+zzdbg.filename;
-var pre = d.querySelector("pre");
+var pre = d.querySelector("pre") || d.body.childNodes[0];
 zzdbg.editor.value = pre.textContent;
 pre.replaceWith(zzdbg.editor);
 }

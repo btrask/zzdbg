@@ -78,7 +78,7 @@ Some pages have strict Content-Security-Policy settings that block bookmarklets 
 
 The text editor in edit mode is just a plain `<textarea>`.
 
-It's only been tested in Firefox Mobile.
+zzdbg is mainly developed in and for Mobile Firefox. It should also work in Mobile Chrome/Safari.
 
 ### Development notes
 The coding style is "idiosyncratic" because I'm writing it entirely on my phone. Some compromises are made to keep the code short enough to fit in a bookmarklet as well.
