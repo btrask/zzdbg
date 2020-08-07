@@ -55,6 +55,10 @@ Look up MDN documentation for arbitrary objects:
 
 zzdbg also defines the `zzdbg` object that exposes most of its functionality programmatically.
 
+### Other features
+
+`zzdbg.traceEvent(elem, ["click", MouseEvent])`: It isn't possible to get a list of registered event listeners, unfortunately, but this method will dispatch a fake event with a special getter that logs the stack when it's called.
+
 ### What's so special about being a quine?
 Quines are nothing special, but as a quine and an editor, zzdbg is fully "self-hosting". You can run it from a bookmarklet, edit it, and save it back into the bookmarklet without directly touching the file system.
 

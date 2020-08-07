@@ -497,6 +497,12 @@ for(var i = 0; i < frames.length; i++) if(frames[i].contentWindow == win) return
 return null;
 };
 
+zzdbg.traceEvent = function(target, type, eclass) {
+var e = new (eclass||MouseEvent)(type||"click", { view:w, bubbles:true, cancelable:true });
+Object.defineProperty(e, "target", { get:function trace() { zzdbg.log(new Error().stack); return target; } });
+target.dispatchEvent(e);
+};
+
 
 function has(a, b) {
 return Object.prototype.hasOwnProperty.call(a, b);
