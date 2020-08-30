@@ -60,8 +60,8 @@ ui.innerHTML = '<style>'+
 '<textarea class="zzoutput" readonly="true"></textarea>'+
 '<div class="zzbar">'+
 '<textarea class="zzinput"></textarea>'+
-'<input class="zzdnbtn" type="button" value="⬇">'+
-'<input class="zzupbtn" type="button" value="⬆">'+
+'<input class="zzdnbtn" type="button" value="">'+
+'<input class="zzupbtn" type="button" value="">'+
 '</div>'+
 '<div class="zzsuggest" hidden><\div>';
 
@@ -188,8 +188,7 @@ if(isa(x, String)) {
 return inlineStrings && 0 == depth ? x : JSON.stringify(x);
 }
 
-if(isa(x, NodeList) || isa(x, NamedNodeMap) || isa(x, StyleSheetList) || isa(x, HTMLCollection) || isa(x, HTMLAllCollection)) x = toArray(x);
-
+if(arraylike(x)) x = toArray(x);
 if(isa(x, Array)) {
 if(depth >= zzdbg.stringifyDepth-1) return "[ ("+x.length+" items) ]";
 return "[ "+x.map(function(y, i) { return i+": "+zzdbg.stringifyFull(y, depth+1, inlineStrings); }).join(", ")+" ]";
@@ -353,13 +352,19 @@ return results;
 };
 
 
+zzdbg.getURL = function(obj) {
+obj = zzdbg.frameElement(obj) || obj;
+var url = parseURL(obj) || (obj.location||{}).href || obj.href || obj.src || ((obj.attributes||{}).background||{}).value;
+return url ? String(url) : null;
+};
+zzdbg.getURLs = function(objs) {
+return argsArray(arguments).map(zzdbg.getURL);
+};
 zzdbg.open = function(obj) {
 var win = zzdbg.viewAsSource(obj);
 if(win) return win;
-obj = zzdbg.frameElement(obj) || obj;
-var url = parseURL(obj) || (obj.location||{}).href || obj.href || obj.src || ((obj.attributes||{}).background||{}).value;
+var url = zzdbg.getURL(obj);
 if(!url) return null;
-url = String(url);
 if(/^javascript:/.test(url)) return zzdbg.viewAsSource(url);
 return zzdbg.openWindow(url);
 };
@@ -466,27 +471,33 @@ return 'javascript:('+zzdbg.loader.toString()+')('+JSON.stringify("("+zzdbg_main
 };
 
 zzdbg.wgetcmd = function(dls) {
-if(!isa(dls, Array)) dls = toArray(arguments);
-return dls.map(function(dl){ return "wget --adjust-extension " + (isa(dl, String) ? safe_shell_arg(dl) : safe_shell_arg(dl.url)+" -O '"+safe_filename(dl.filename)+"'"); }).join("; ");
+return argsArray(arguments).map(parseDL).map(dl => "wget "+safe_shell_arg(dl.url||'TEST')+" -O '"+safe_filename(dl)+"'").join("; ");
 };
 function safe_shell_arg(shell_arg) {
 return "'"+shell_arg.replace(/\'/g, "\\'")+"'";
 }
-function safe_filename(filename) {
-return filename.replace(/[^a-zA-Z0-9._ \[\]\{\}-]/g, "_");
+function safe_filename(dl) {
+var f = dl.filename || urlBasename(dl.url);
+return f.replace(/[^a-zA-Z0-9._ \[\]\{\}-]/g, "_");
 }
 zzdbg.dl = function(dls) {
-if(!isa(dls, Array)) dls = toArray(arguments);
+dls = argsArray(arguments).map(parseDL);
 var a = d.createElement("a");
 ui.appendChild(a);
-/*a.target = "_blank";*/
+a.target = "_blank";
 for(var i = 0; i < dls.length; i++) {
-a.download = (isa(dls[i], String) ? "" : dls[i].filename);
-a.href = (isa(dls[i], String) ? dls[i] : dls[i].url);
+a.download = dls[i].filename || "";
+a.href = dls[i].url;
 a.click();
 }
 a.remove();
 };
+function parseDL(obj) {
+if(!obj) return null;
+if(isa(obj, String)) return { url:obj };
+if(obj.url) return obj;
+return { url:zzdbg.getURL(obj) };
+}
 
 zzdbg.frameElement = function(win) {
 if(!isa(win, Window)) return null;
@@ -522,6 +533,13 @@ function isa2(x, y) {
 if(isa(x, y)) return true;
 try { return x.constructor.name == y.name; }
 catch(e) { return false; }
+}
+function arraylike(x) {
+return isa(x, Array) || isa(x, NodeList) || isa(x, NamedNodeMap) || isa(x, StyleSheetList) || isa(x, HTMLCollection) || isa(x, HTMLAllCollection);
+}
+function argsArray(arr) {
+var x = arr[0];
+return toArray(arraylike(x) ? x : arr);
 }
 function escapeHTML(str) {
 var x = d.createElement("div");

@@ -2,13 +2,15 @@
 
 zzdbg is a simple but relatively powerful web and Javascript debugger that loads into a web page as a bookmarklet. It's specifically designed for mobile browsers that don't have their own built-in debuggers and which make it too difficult to run your own code.
 
+Unlike other projects that attempt to replicate the Chrome developer tools, zzdbg is more like a CLI. It might be more convenient for people who know what they're doing.
+
 ### Usage examples
 
 Use `.e` to get an element by clicking somewhere on the page. It prints a summary of the element plus all the CSS rules that apply to it:
 
 > `> .e`  
 > `(Waiting for click…)`  
-> `<img src="https://www.wikipedia.org/portal/wikipedia.org/assets/img/Wikipedia-logo-v2.png"> [ {  }, img { vertical-align: middle; }, hr, img { border: 0px none; }, .central-featured-logo { position: absolute; top: 158px; left: 35px; } ]`  
+> `<img class="central-featured-logo" src="portal/wikipedia.org/assets/img/Wikipedia-logo-v2.png" srcset="portal/wikipedia.org/assets/img/Wikipedia-logo-v2@1.5x.png 1.5x, portal/wikipedia.org/assets/img/Wikipedia-logo-v2@2x.png 2x" alt="Wikipedia" width="200" height="183"> [ 0: img { vertical-align: middle; }, 1: hr, img { border: 0px none; }, 2: .central-featured-logo { position: absolute; top: 158px; left: 35px; }, 3: .zzdbg, * { pointer-events: auto !important; } ]`  
 
 Use `.o` to "open" an arbitrary object. `_` is the last result, in this case, an `<img>`:
 
@@ -22,10 +24,10 @@ Run arbitrary Javascript:
 > `> document.title`  
 > `"Wikipedia"`
 
-DOM elements are printed nicely:
+DOM elements are printed in full detail:
 
 > `> document.querySelector(".sprite")`  
-> `<span class="central-textlogo__image sprite svg-Wikipedia_wordmark">`
+> `<span class="central-textlogo__image sprite svg-Wikipedia_wordmark"> [ 0: .sprite { background-image: linear-gradient(transparent, transparent), url("portal/wikipedia.org/assets/img/sprite-46c49284.svg"); background-repeat: no-repeat; display: inline-block; vertical-align: middle; }, 1: .svg-Wikipedia_wordmark { background-position: 0px -254px; width: 176px; height: 32px; }, 2: .central-textlogo__image { color: transparent; display: inline-block; overflow: hidden; text-indent: -10000px; }, 3: .zzdbg, * { pointer-events: auto !important; } ]`  
 
 View source of first script in page:
 
@@ -37,10 +39,10 @@ View source of first style sheet in page:
 > `> .o document.styleSheets[0]`  
 > `[Window "javascript:\"zzdbg source view for inline-style.css (Wikipedia)\"; \"...\""]`
 
-Look up MDN documentation for arbitrary objects:
+Look up MDN documentation for arbitrary objects and functions:
 
-> `> .d document.body`  
-> `[Window "https://developer.mozilla.org/en-US/docs/Web/API/HTMLBodyElement"]`
+> `> .d document.addEventListener`  
+> `[Window "https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener"]`  
 
 ### Special commands
 - `.h`: help
@@ -48,19 +50,22 @@ Look up MDN documentation for arbitrary objects:
 - `.c`: clear output
 - `.o (expr)`: open/view source of URL, anchor, image, script or style object
 - `.d (expr)`: look up the value of the expression or an arbitrary string in the MDN docs
-- `.p (expr)`: list properties
 - `.e`: click an element to get a reference to it (use `_` or `zzdbg.lastSelectedElement` after clicking)
 - `.a`: apply changes to the main document (editor mode)
-- `.s [filename]`: save file (editor mode)
+- `.s [filename]`: save file, with optional filename (editor mode)
 
 zzdbg also defines the `zzdbg` object that exposes most of its functionality programmatically.
 
 ### Other features
 
+`zzdbg.getURL(obj)` and `zzdbg.getURLs(array)` expose the same logic used by `.o` to get the URL of an arbitrary object, such as `<a>` or `<img>`.
+
+`zzdbg.wgetcmd(dls)` and `zzdbg.dl(dls)` are handy for scraping.
+
 `zzdbg.traceEvent(elem, ["click", MouseEvent])`: It isn't possible to get a list of registered event listeners, unfortunately, but this method will dispatch a fake event with a special getter that logs the stack when it's called.
 
 ### What's so special about being a quine?
-Quines are nothing special, but as a quine and an editor, zzdbg is fully "self-hosting". You can run it from a bookmarklet, edit it, and save it back into the bookmarklet without directly touching the file system.
+Quines are nothing special, but as a quine and an editor, zzdbg is fully "self-hosting". You can run it from a bookmarklet, edit it, and save it back into the bookmarklet without directly(!) touching the file system.
 
 It also uses its quine form to load itself into new windows, as: `newWin.location = zzdbg.bookmarklet()`.
 
@@ -82,7 +87,9 @@ Some pages have strict Content-Security-Policy settings that block bookmarklets 
 
 The text editor in edit mode is just a plain `<textarea>`.
 
-zzdbg is mainly developed in and for Mobile Firefox. It should also work in Mobile Chrome/Safari.
+zzdbg is mainly developed in and for Mobile Firefox v68. It should also work in Mobile Chrome/Safari.
+
+Some browsers like Safari impose a short maximum bookmarklet length, which zzdbg is too big for. Ironically, the only way to run zzdbg in these browsers is through the developer console.
 
 ### Development notes
 The coding style is "idiosyncratic" because I'm writing it entirely on my phone. Some compromises are made to keep the code short enough to fit in a bookmarklet as well.
