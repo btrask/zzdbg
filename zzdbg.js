@@ -3,7 +3,7 @@
 var w = window;
 var d = w.document;
 var zzdbg = {};
-var ui = d.createElement("div");
+var ui = d.createElement('div');
 var hpos = 0;
 var oldconsole = {};
 var reqHandlers = {};
@@ -19,7 +19,7 @@ zzdbg.filename = null;
 if(w.zzdbg) {
 zzdbg.loader = w.zzdbg.loader;
 zzdbg.script = w.zzdbg.script;
-zzdbg.script.textContent = "("+zzdbg_main.toString()+")();";
+zzdbg.script.textContent = '('+zzdbg_main.toString()+')()';
 w.zzdbg.script = null;
 zzdbg.history = w.zzdbg.history;
 zzdbg.editors = w.zzdbg.editors;
@@ -34,12 +34,13 @@ zzdbg.close = function() {
 exchange(oldconsole, console);
 if(zzdbg.script) zzdbg.script.remove();
 ui.remove();
-w.removeEventListener("message", messageListener, true);
+w.removeEventListener('message', messageListener);
+d.removeEventListener('fullscreenchange', fullscreenchange)
 delete w.zzdbg;
 };
 zzdbg.ui = ui;
 
-ui.className = "zzdbgui";
+ui.className = 'zzdbgui';
 ui.innerHTML = '<style>'+
 '.zzdbg, * { pointer-events:auto !important; }'+
 '.zzdbgui, .zzdbgui *, .zzeditor { font:3vw monospace !important; margin:0 !important; padding:0 !important; box-sizing:border-box !important; border-radius:0; background-color:white; color:black; }'+
@@ -66,11 +67,11 @@ ui.innerHTML = '<style>'+
 '<div class="zzsuggest" hidden><\div>';
 
 d.body.appendChild(ui);
-var output = ui.querySelector(".zzoutput");
-var input = ui.querySelector(".zzinput");
-var upbtn = ui.querySelector(".zzupbtn");
-var dnbtn = ui.querySelector(".zzdnbtn");
-var suggest = ui.querySelector(".zzsuggest");
+var output = ui.querySelector('.zzoutput');
+var input = ui.querySelector('.zzinput');
+var upbtn = ui.querySelector('.zzupbtn');
+var dnbtn = ui.querySelector('.zzdnbtn');
+var suggest = ui.querySelector('.zzsuggest');
 zzdbg.output = output;
 zzdbg.input = input;
 zzdbg.upbtn = upbtn;
@@ -82,31 +83,30 @@ zzdbg.lastError = undefined;
 zzdbg.do = function(cmd) {
 var err, res;
 var quiet = false;
-writeToOutput(["> "+cmd], true);
+writeToOutput(['> '+cmd], true);
 
 try {
-if(".h" == cmd) {
+if('.h' == cmd) {
 zzdbg.info(zzdbg.doc);
 quiet = true;
-} else if(".q" == cmd) return zzdbg.close();
-else if(/^\.o\b/.test(cmd)) res = zzdbg.open(zzdbg.evalLocal("("+cmd.replace(/^\.o\s*/, "")+")"));
-else if(/^\.d\b/.test(cmd)) res = docLookup(cmd.replace(/^\.d\s*/, ""));
-else if(/^\.p\b/.test(cmd)) res = zzdbg.properties(zzdbg.evalLocal("("+cmd.replace(/^\.p\s*/, "")+")"));
-else if(".e" == cmd) {
+} else if('.q' == cmd) return zzdbg.close();
+else if(/^\.o\b/.test(cmd)) res = zzdbg.open(zzdbg.evalLocal('('+cmd.replace(/^\.o\s*/, '')+')'));
+else if(/^\.d\b/.test(cmd)) res = docLookup(cmd.replace(/^\.d\s*/, ''));
+else if('.e' == cmd) {
 selectElement();
 quiet = true;
-} else if(".a" == cmd) {
+} else if('.a' == cmd) {
 zzdbg.applyChanges();
 quiet = true;
 } else if(/^\.s\b/.test(cmd)) {
-if(!zzdbg.editor) throw new Error("not in edit mode");
-zzdbg.filename = cmd.replace(/^\.s\s*|\s*$/g, "") || zzdbg.filename;
-zzdbg.dl({ filename: zzdbg.filename || "untitled.txt", url:"data:text/plain,"+encodeURI(zzdbg.editor.value) });
-} else res = zzdbg.evalLocal(cmd.replace(/^javascript:/, ""));
+if(!zzdbg.editor) throw new Error('not in edit mode');
+zzdbg.filename = cmd.replace(/^\.s\s*|\s*$/g, '') || zzdbg.filename;
+zzdbg.dl({ filename: zzdbg.filename || 'untitled.txt', url:'data:text/plain,'+encodeURI(zzdbg.editor.value) });
+} else res = zzdbg.evalLocal(cmd.replace(/^javascript:/, ''));
 } catch(e) { err = e; }
 
 if(!quiet) writeToOutput([err||res], false);
-if(".c" == cmd) output.value = "";
+if('.c' == cmd) output.value = '';
 zzdbg.history.push({ cmd:cmd, res:res, err:err });
 w._ = res;
 zzdbg.lastError = err;
@@ -115,10 +115,10 @@ zzdbg.lastError = err;
 input.onkeydown = function(event) {
 var cmd = input.value;
 hpos = 0;
-if("Enter" != event.key) return;
+if('Enter' != event.key) return;
 event.preventDefault();
-if("" == cmd) return;
-input.value = "";
+if('' == cmd) return;
+input.value = '';
 zzdbg.do(cmd);
 suggest.hidden = true;
 };
@@ -127,15 +127,15 @@ var cmd = input.value;
 var pos = input.selectionEnd;
 var term = cmd.slice(0, pos).match(/([\w$]+\.)*[\w$]*$/);
 try {
-var base = term[0].replace(/\.?[\w$]*$/, "") || "window";
-var part = term[0].replace(/^([\w$]+\.)*/, "");
-var compare = new Intl.Collator("en").compare;
-var props = term[0].length ? zzdbg.properties(zzdbg.evalLocal("("+base+")")) : [];
-props = Array.prototype.concat.apply([], props).filter(function(prop){ return prop.startsWith(part) && prop != part; }).sort(compare);
+var base = term[0].replace(/\.?[\w$]*$/, '') || 'window';
+var part = term[0].replace(/^([\w$]+\.)*/, '');
+var compare = new Intl.Collator('en').compare;
+var props = term[0].length ? zzdbg.properties(zzdbg.evalLocal('('+base+')')) : [];
+props = props.filter(function(prop){ return prop.startsWith(part) && prop != part; }).sort(compare);
 
-suggest.innerHTML = "";
+suggest.innerHTML = '';
 for(var i = 0; i < props.length; i++) {
-var item = d.createElement("div");
+var item = d.createElement('div');
 item.textContent = props[i];
 suggest.appendChild(item);
 item.onclick = function() {
@@ -146,8 +146,8 @@ input.selectionStart = input.selectionEnd = pos+(this.textContent.length-part.le
 };
 }
 suggest.hidden = !props.length;
-suggest.style.width = suggest.scrollWidth+"px";
-suggest.style.height = Math.min(suggest.scrollHeight, w.innerHeight*.75)+"px";
+suggest.style.width = suggest.scrollWidth+'px';
+suggest.style.height = Math.min(suggest.scrollHeight, w.innerHeight*.75)+'px';
 } catch(e) { suggest.hidden = true; }
 };
 
@@ -161,7 +161,7 @@ if(0 == dir) return;
 hpos += dir;
 hpos = Math.min(hpos, zzdbg.history.length);
 if(hpos < 0) hpos = 0;
-input.value = hpos ? zzdbg.history.slice(-hpos)[0].cmd : "";
+input.value = hpos ? zzdbg.history.slice(-hpos)[0].cmd : '';
 input.selectionStart = input.selectionEnd = input.value.length;
 };
 
@@ -169,18 +169,18 @@ input.selectionStart = input.selectionEnd = input.value.length;
 zzdbg.stringify = null;
 zzdbg.stringifyDepth = 3;
 zzdbg.stringifyFull = function(x, depth, inlineStrings) {
-if(undefined === depth || undefined === inlineStrings) throw new Error("stringify args");
+if(undefined === depth) throw new Error('stringify args');
 
 if(zzdbg.stringify) {
 x = zzdbg.stringify(x, depth, inlineStrings);
 if(isa(x, String)) return x;
 }
 
-if(depth >= zzdbg.stringifyDepth) return "…";
-if(depth >= 1 && "function" == typeof x) return "[function …]";
+if(depth >= zzdbg.stringifyDepth) return '…';
+if(depth >= 1 && 'function' == typeof x) return '[function …]';
 
 if(isa(x, Text)) {
-x = x.textContent.replace(/^\s+|\s+$/g, "");
+x = x.textContent.replace(/^\s+|\s+$/g, '');
 if(!x) return '" "';
 }
 
@@ -188,34 +188,36 @@ if(isa(x, String)) {
 return inlineStrings && 0 == depth ? x : JSON.stringify(x);
 }
 
-if(arraylike(x)) x = toArray(x);
-if(isa(x, Array)) {
-if(depth >= zzdbg.stringifyDepth-1) return "[ ("+x.length+" items) ]";
-return "[ "+x.map(function(y, i) { return i+": "+zzdbg.stringifyFull(y, depth+1, inlineStrings); }).join(", ")+" ]";
+if(0&&isa(x, Error)) return x+(0 == depth ? '\n'+x.stack : '');
+
+if(arraylike(x)) {
+x = toArray(x);
+if(depth >= zzdbg.stringifyDepth-1) return '[ ('+x.length+' items) ]';
+return '[ '+x.map(function(y, i) { return i+': '+zzdbg.stringifyFull(y, depth+1, inlineStrings); }).join(', ')+' ]';
 }
 
 if(isa2(x, Window)) {
-try { return "[Window "+zzdbg.stringifyFull(x.zzdbg_initialLocation||x.location.href, depth+1, inlineStrings)+"]"; }
-catch(e) { if(!isSecurityError(e)) throw e; return "[Cross-origin window for "+zzdbg.stringifyFull(zzdbg.frameElement(x), depth+1, false)+"]"; }
+try { return '[Window '+zzdbg.stringifyFull(x.zzdbg_initialLocation||x.location.href, depth+1, inlineStrings)+']'; }
+catch(e) { if(!isSecurityError(e)) throw e; return '[Cross-origin window for '+zzdbg.stringifyFull(zzdbg.frameElement(x), depth+1)+']'; }
 }
 
 try {
-if(isa(x, CSSStyleSheet) || isa(x, CSSRuleList)) return "["+x.constructor.name+" with "+(x.cssRules||x).length+" rules]";
+if(isa(x, CSSStyleSheet) || isa(x, CSSRuleList)) return '['+x.constructor.name+' with '+(x.cssRules||x).length+' rules]';
 if(isa(x, CSSRule)) return x.cssText;
-if(isa(x, CSSStyleDeclaration)) return "{ "+(x.cssText||toArray(x).filter(function(attr) { return x[attr]; }).map(function(attr) { return attr+": "+x[attr]; }).join("; "))+" }";
+if(isa(x, CSSStyleDeclaration)) return '{ '+(x.cssText||toArray(x).filter(function(attr) { return x[attr]; }).map(function(attr) { return attr+': '+x[attr]; }).join('; '))+' }';
 } catch(e) {
 if(!isSecurityError(e)) throw e;
-if(x.href) return "["+x.constructor.name+' "'+url_summary(x.href)+'"]';
-return "[cross-origin "+x.constructor.name+"]"
+if(x.href) return '['+x.constructor.name+' "'+url_summary(x.href)+'"]';
+return '[cross-origin '+x.constructor.name+']'
 }
 
 function url_summary(url) {
-return 0 == depth ? url : "…"+(urlBasename(url)||"");
+return 0 == depth ? url : '…'+(urlBasename(url)||'');
 }
 if(isa(x, HTMLElement)) {
 var attrs = toArray(x.attributes).filter(function(attr) { return 0 == depth || /^(id|class|href|src)$/i.test(attr.name); }).map(function(attr) { return zzdbg.stringifyFull(attr, depth, false); });
-if(attrs.length < x.attributes.length) attrs.push("…");
-return "<"+[x.tagName.toLowerCase()].concat(attrs).join(" ")+">"+(0==depth ? " "+zzdbg.stringifyFull(zzdbg.cssRules(x), depth, false) : "");
+if(attrs.length < x.attributes.length) attrs.push('…');
+return '<'+[x.tagName.toLowerCase()].concat(attrs).join(' ')+'>'+(0==depth ? ' '+zzdbg.stringifyFull(zzdbg.cssRules(x), depth, false) : '');
 }
 if(isa(x, Attr)) {
 if(/^(href|src|srcset|background|poster)$/i.test(x.name)) return x.name+'="'+url_summary(x.value)+'"';
@@ -224,12 +226,12 @@ return x.name+'="'+x.value+'"';
 
 var str;
 if(null === x || undefined === x) str = String(x);
-try { if(!str && x.__proto__ && "function" == typeof x.__proto__.toString) str = String(x.__proto__.toString.call(x)); }
-catch(e) { if(isSecurityError(e)) str = "[cross-origin object]"; }
+try { if(!str && x.__proto__ && 'function' == typeof x.__proto__.toString) str = String(x.__proto__.toString.call(x)); }
+catch(e) { if(isSecurityError(e)) str = '[cross-origin object]' }
 if(!str) str = Object.prototype.toString.call(x);
 
-if(str && "[object Object]" != str) return str;
-return "{ "+Object.keys(x).map(function(key) { return key+": "+zzdbg.stringifyFull(x[key], depth+1, inlineStrings); }).join(", ")+" }";
+if(str && '[object Object]' != str) return str;
+return '{ '+Object.keys(x).map(function(key) { return key+': '+zzdbg.stringifyFull(x[key], depth+1, inlineStrings); }).join(', ')+' }';
 };
 
 
@@ -241,7 +243,7 @@ var descriptors = Object.getOwnPropertyDescriptors(obj);
 for(var name in descriptors) {
 if(obj === w && descriptors[name].enumerable) continue;
 var val = descriptors[name].value;
-if("function" != typeof val) continue;
+if('function' != typeof val) continue;
 if(prop.constructor === val && Function != val) return [name];
 if(val === prop) return [name];
 var x = findprop(val.prototype, prop, depth-1) || findprop(val, prop, depth-1);
@@ -253,23 +255,23 @@ function docLookup(str) {
 var url = null;
 try {
 var path = null;
-if("" === str) return zzdbg.info("Usage: .d (expression or search terms)");
-if("null" == str || "undefined" == str) path = [str];
+if('' === str) return zzdbg.info('Usage: .d (expression or search terms)');
+if('null' == str || 'undefined' == str) path = [str];
 else {
-var x = zzdbg.evalLocal("("+str+")");
+var x = zzdbg.evalLocal('('+str+')');
 if(null === x || undefined === x) throw new Error();
 path = findprop(w, x, 2);
 }
 if(!path || !path[0]) throw new Error();
 
-if("CSS2Properties" == path[0]) path[0] = "CSSStyleDeclaration";
+if('CSS2Properties' == path[0]) path[0] = 'CSSStyleDeclaration';
 
-if(/^encode|^Object$|^Array$|^Boolean$|^Number$|^BigInt$|^Math$|^Date$|^String$|^RegExp$|Error$|Function$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/"+path.join("/");
-else if(/^CSS|^DOM|^File|^HTML|^Node|^NamedNode|^RTC|^XML|^Attr$|^ChildNode$|^Document$|^IDBFactory$|^URL$|^Window$|Event|Style|Element$|List$/.test(path[0])) url = "https://developer.mozilla.org/en-US/docs/Web/API/"+path.join("/");
-else url = "https://developer.mozilla.org/en-US/search?q="+path.join(".");
+if(/^encode|^Object$|^Array$|^Boolean$|^Number$|^BigInt$|^Math$|^Date$|^String$|^RegExp$|Error$|Function$/.test(path[0])) url = 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/'+path.join('/');
+else if(/^CSS|^DOM|^File|^HTML|^Node|^NamedNode|^RTC|^XML|^Attr$|^ChildNode$|^Document$|^History$|^IDBFactory$|^URL$|^Window$|Event|Style|Element$|List$/.test(path[0])) url = 'https://developer.mozilla.org/en-US/docs/Web/API/'+path.join('/');
+else url = 'https://developer.mozilla.org/en-US/search?q='+path.join('.');
 
 } catch(e) {
-url = "https://developer.mozilla.org/en-US/search?q="+encodeURIComponent(str);
+url = 'https://developer.mozilla.org/en-US/search?q='+encodeURIComponent(str);
 }
 
 return zzdbg.openWindow(url);
@@ -277,7 +279,7 @@ return zzdbg.openWindow(url);
 
 zzdbg.properties = function(obj) {
 var descriptors = Object.getOwnPropertyDescriptors(obj);
-var results = [ Object.keys(descriptors) ];
+var results = Object.keys(descriptors);
 var proto = null;
 try { proto = obj.__proto__; }
 catch(e) {}
@@ -288,11 +290,11 @@ return results;
 
 zzdbg.cancelSelect = null;
 zzdbg.selectElement = function(roots, callback) {
-roots = isa(roots, Array) ? roots : roots ? [roots] : [w].concat(toArray(w));
-for(var i = 0; i < roots.length; i++) try { roots[i].addEventListener("click", listener, true); } catch(e) { zzdbg.info("Unable to install handler", roots[i]); }
+roots = arraylike(roots) ? roots : roots ? [roots] : [w].concat(toArray(w));
+for(var i = 0; i < roots.length; i++) try { roots[i].addEventListener('click', listener, true); } catch(e) { zzdbg.info('Unable to install handler', roots[i]); }
 if(zzdbg.cancelSelect) zzdbg.cancelSelect();
 zzdbg.cancelSelect = function() {
-for(var i = 0; i < roots.length; i++) try { roots[i].removeEventListener("click", listener, true); } catch(e) {}
+for(var i = 0; i < roots.length; i++) try { roots[i].removeEventListener('click', listener, true); } catch(e) {}
 zzdbg.cancelSelect = null;
 };
 function listener(event) {
@@ -307,34 +309,34 @@ function selectElement() {
 zzdbg.selectElement(null, function(elem) {
 zzdbg.selectElementAction(elem);
 var h = zzdbg.history.slice(-1)[0];
-if(h && ".e" == h.cmd) { h.res = w._ = elem; }
+if(h && '.e' == h.cmd) { h.res = w._ = elem; }
 zzdbg.lastSelectedElement = elem;
 });
-zzdbg.info("(Waiting for click…)");
+zzdbg.info('(Waiting for click…)');
 }
 
 
 zzdbg.log = zzdbg.info = function zzdbg_log(...args) {
 writeToOutput(args, true);
 };
-zzdbg.warn = specialLog("Warning:");
-zzdbg.error = specialLog("Error:");
+zzdbg.warn = specialLog('Warning:');
+zzdbg.error = specialLog('Error:');
 function specialLog(pfx) {
 return function zzdbg_log(...args) { writeToOutput([pfx].concat(args), true); };
 };
 oldconsole.log = oldconsole.warn = oldconsole.info = oldconsole.error = zzdbg.log;
 exchange(oldconsole, console);
 function writeToOutput(array, inlineStrings) {
-if(output.value) output.value +="\n";
-try { output.value += array.map(function(arg) { return zzdbg.stringifyFull(arg, 0, inlineStrings); }).join(" "); }
-catch(e) { output.value += e+" (zzdbg stringify)"; }
+if(output.value) output.value += '\n';
+try { output.value += array.map(function(arg) { return zzdbg.stringifyFull(arg, 0, inlineStrings); }).join(' '); }
+catch(e) { output.value += e+' (zzdbg stringify)'; }
 output.scrollTop = output.scrollHeight;
 }
 zzdbg.selectElementAction = zzdbg.log;
 
 
 zzdbg.cssRules = function(obj) {
-var elems = isa(obj, String) ? document.querySelectorAll(obj) : obj.length >= 0 ? obj : [obj];
+var elems = isa(obj, String) ? document.querySelectorAll(obj) : arraylike(obj) ? obj : [obj];
 var results = [];
 var sheets = d.styleSheets;
 for(var i = 0; i < sheets.length; i++) {
@@ -371,13 +373,13 @@ return zzdbg.openWindow(url);
 zzdbg.viewAsSource = function(obj, name) {
 var target = obj, url, str;
 if(obj == zzdbg.loader) {
-target = "loader.js";
+target = 'loader.js';
 str = obj.toString();
 name = name || target;
 } else if(isa(obj, HTMLScriptElement)) {
-if(obj == zzdbg.script) name = name || "zzdbg.js";
-if(obj.src) { url = obj.src; name = name || urlBasename(obj.src) || "untitled.js"; }
-else { str = obj.textContent; name = name || "inline-script.js"; }
+if(obj == zzdbg.script) name = name || 'zzdbg.js';
+if(obj.src) { url = obj.src; name = name || urlBasename(obj.src) || 'untitled.js'; }
+else { str = obj.textContent; name = name || 'inline-script.js'; }
 } else if(isa(obj, HTMLStyleElement)) {
 str = obj.textContent;
 } else if(isa(obj, CSSStyleSheet)) {
@@ -388,9 +390,9 @@ url = obj.href;
 } else if(isa(obj, String)) {
 var parsed = parseURL(obj);
 if(!parsed) str = obj;
-else if("javascript:" == parsed.protocol) {
+else if('javascript:' == parsed.protocol) {
 str = obj;
-name = name || "bookmarklet.js";
+name = name || 'bookmarklet.js';
 } else if(/\.(js|css|html)$/i.test(parsed.pathname)) url = obj;
 target = null;
 }
@@ -411,17 +413,17 @@ function openEditor(target, url, str, name) {
 var win = findEditor(target);
 if(win) return win.focus(), win;
 if(!url && !isa(str, String)) return null;
-var title = "zzdbg source view for "+(name||"untitled")+" ("+d.title+")";
+var title = 'zzdbg source view for '+(name||'untitled')+' ('+d.title+')';
 var jsurl = 'javascript:'+JSON.stringify(title)+'; "..."';
-win = zzdbg.openWindow(url || jsurl, "editor");
+win = zzdbg.openWindow(url || jsurl, 'editor');
 if(!win) throw new Error("couldn't create window");
 try { setupWin(); win.onload = setupWin; }
-catch(e) { zzdbg.info("(To edit, run zzdbg again in the new window)"); }
+catch(e) { zzdbg.info('(To edit, run zzdbg again in the new window)'); }
 function setupWin() {
 if(!url) {
-win.document.title = name || "";
-win.document.body.innerHTML = "<pre></pre>";
-win.document.querySelector("pre").textContent = str.replace(/^\s+|\s+$/g, "");
+win.document.title = name || '';
+win.document.body.innerHTML = '<pre></pre>';
+win.document.querySelector('pre').textContent = str.replace(/^\s+|\s+$/g, '');
 }
 win.zzdbg_filename = name;
 win.location = zzdbg.bookmarklet();
@@ -430,63 +432,63 @@ zzdbg.editors.push({ window:win, target:target });
 return win;
 }
 zzdbg.applyChanges = function() {
-if(!zzdbg.editor) throw new Error("not in edit mode");
+if(!zzdbg.editor) throw new Error('not in edit mode');
 var src = zzdbg.editor.value;
-sendWindowRequest(w.opener, "apply", { src:src }, function(res) { zzdbg.info("Apply changes:", res || "success"); });
+sendWindowRequest(w.opener, 'apply', { src:src }, function(res) { zzdbg.info('Apply changes:', res || 'success'); });
 };
 reqHandlers.apply = function(win, payload, sendRes) {
 var target = findEditor(win);
-if(undefined === target) return sendRes("unknown target");
+if(undefined === target) return sendRes('unknown target');
 var src = payload.src;
-if(!isa(src, String)) return sendRes("not a string");
+if(!isa(src, String)) return sendRes('not a string');
 try {
 if(!target) {
-return sendRes("target does not support editing");
-} else if("loader.js" == target) {
-zzdbg.loader = zzdbg.evalLocal("("+src+")");
+return sendRes('target does not support editing');
+} else if('loader.js' == target) {
+zzdbg.loader = zzdbg.evalLocal('('+src+')');
 } else if(isa(target, HTMLScriptElement)) {
-if(target.src) target["data-zzdbg-src"] = target.src;
-target.removeAttribute("src");
-target.textContent = '"nop"';
+if(target.src) target['data-zzdbg-src'] = target.src;
+target.removeAttribute('src');
+target.textContent = '0';
 target.textContent = src;
 if(d.contains(target)) zzdbg.evalLocal(src);
 } else {
-zzdbg.log("apply to unsupported target", target);
-return sendRes("unsupported target");
+zzdbg.log('apply to unsupported target', target);
+return sendRes('unsupported target');
 }
 sendRes(null);
 } catch(e) { sendRes(String(e)); }
 };
 zzdbg.openWindow = function(url, type) {
 if(isa(url, URL)) url = String(url);
-if(!isa(url, String)) throw new TypeError("expected string/URL");
+if(!isa(url, String)) throw new TypeError('expected string/URL');
 var rnd = Math.random().toString(36).slice(2);
-var win = w.open(url, "zzdbg-"+(type||"window")+"-"+rnd);
+var win = w.open(url, 'zzdbg-'+(type||'window')+'-'+rnd);
 try { if(win) win.zzdbg_initialLocation = url; }
 catch(e) {}
 return win;
 };
 zzdbg.bookmarklet = function() {
-return 'javascript:('+zzdbg.loader.toString()+')('+JSON.stringify("("+zzdbg_main.toString()+")();")+');/*END*/';
+return 'javascript:('+zzdbg.loader.toString()+')('+JSON.stringify('('+zzdbg_main.toString()+')();')+')/*END*/';
 };
 
 zzdbg.wgetcmd = function(dls) {
-return argsArray(arguments).map(parseDL).map(dl => "wget "+safe_shell_arg(dl.url||'TEST')+" -O '"+safe_filename(dl)+"'").join("; ");
+return argsArray(arguments).map(parseDL).map(dl => 'wget '+safe_shell_arg(dl.url||'TEST')+" -O '"+safe_filename(dl)+"'").join('; ');
 };
 function safe_shell_arg(shell_arg) {
 return "'"+shell_arg.replace(/\'/g, "\\'")+"'";
 }
 function safe_filename(dl) {
 var f = dl.filename || urlBasename(dl.url);
-return f.replace(/[^a-zA-Z0-9._ \[\]\{\}-]/g, "_");
+return f.replace(/[^a-zA-Z0-9._ \[\]\{\}-]/g, '_');
 }
 zzdbg.dl = function(dls) {
 dls = argsArray(arguments).map(parseDL);
-var a = d.createElement("a");
+var a = d.createElement('a');
 ui.appendChild(a);
-a.target = "_blank";
+a.target = '_blank';
 for(var i = 0; i < dls.length; i++) {
-a.download = dls[i].filename || "";
+a.download = dls[i].filename||'';
 a.href = dls[i].url;
 a.click();
 }
@@ -499,18 +501,25 @@ if(obj.url) return obj;
 return { url:zzdbg.getURL(obj) };
 }
 
+zzdbg.curlcmd = function(obj) {
+if(isa(obj, HTMLFormElement)) {
+return 'curl '+toArray(obj).filter(elem => elem.name).map(elem => '--data-raw '+safe_shell_arg(elem.name)+'='+safe_shell_arg(elem.value||'')).join(' ')+' '+safe_shell_arg(String(new URL(obj.target, document.baseURI)));
+}
+};
+
+
 zzdbg.frameElement = function(win) {
 if(!isa(win, Window)) return null;
 try { return win.frameElement; }
 catch(e) { if(!isSecurityError(e)) throw e; }
-var frames = document.querySelectorAll("frame, iframe");
+var frames = d.querySelectorAll('frame, iframe');
 for(var i = 0; i < frames.length; i++) if(frames[i].contentWindow == win) return frames[i];
 return null;
 };
 
 zzdbg.traceEvent = function(target, type, eclass) {
-var e = new (eclass||MouseEvent)(type||"click", { view:w, bubbles:true, cancelable:true });
-Object.defineProperty(e, "target", { get:function trace() { zzdbg.log(new Error().stack); return target; } });
+var e = new (eclass||MouseEvent)(type||'click', { view:w, bubbles:true, cancelable:true });
+Object.defineProperty(e, 'target', { get:function trace() { zzdbg.log(new Error().stack); return target; } });
 target.dispatchEvent(e);
 };
 
@@ -526,7 +535,7 @@ return Array.prototype.slice.call(x);
 }
 function isa(x, y) {
 if(Array == y) return Array.isArray(x);
-if(String == y && "string" == typeof x) return true;
+if(String == y && 'string' == typeof x) return true;
 return x instanceof y;
 }
 function isa2(x, y) {
@@ -542,7 +551,7 @@ var x = arr[0];
 return toArray(arraylike(x) ? x : arr);
 }
 function escapeHTML(str) {
-var x = d.createElement("div");
+var x = d.createElement('div');
 x.textContent = str;
 return x.innerHTML;
 }
@@ -557,30 +566,30 @@ var x = /([\w%._-]*\/?)$/.exec(url.pathname);
 return x && x[1];
 }
 function isSecurityError(e) {
-return "SecurityError" == e.name;
+return 'SecurityError' == e.name;
 }
 
-zzdbg.log("zzdbg - type .h for help");
+zzdbg.log('zzdbg - type .h for help');
 
 function eval2(str) {
 var n = zzdbg.evalItems.length;
-var x = zzdbg.evalItems[n] = { err: new SyntaxError("eval2") };
-var s = d.createElement("script");
-str = str.replace(/(;|\s|\/\/[^"']*|\/\*[^"']*)*$/, "");
-var expr = /^\s*\{/.test(str) ? '{{{{{ '+str+' }}}}}' : 'zzdbg.evalItems['+n+'].res = ((((( '+str+' )))))';
+var x = zzdbg.evalItems[n] = { err: new SyntaxError('eval2') };
+var s = d.createElement('script');
+str = str.replace(/(;|\s)*$/, '');
+var expr = /^\s*\{/.test(str) ? '{{{{{\n'+str+'\n}}}}}' : 'zzdbg.evalItems['+n+'].res = (((((\n'+str+'\n)))))';
 s.textContent =
 'try { '+expr+'; delete zzdbg.evalItems['+n+'].err; }'+
 'catch(e) { zzdbg.evalItems['+n+'].err = e; }';
 ui.appendChild(s); s.remove();
 delete zzdbg.evalItems[n];
-if(has(x, "err")) throw x.err;
+if(has(x, 'err')) throw x.err;
 return x.res;
 }
 zzdbg.evalItems = [];
 zzdbg.evalLocal = eval;
-try { zzdbg.evalLocal('"test"'); }
+try { zzdbg.evalLocal('0'); }
 catch(e) {
-zzdbg.evalLocal = eval2; zzdbg.warn("Warning: zzdbg is running without eval(). Please wrap statements in braces: { var x; }. Expressions can be run as normal: func(). ("+e+")");
+zzdbg.evalLocal = eval2; zzdbg.warn('zzdbg is running without eval(). Please wrap statements in braces: { var x; }. Expressions can be run as normal: func(). ('+e+')');
 }
 zzdbg.eval = function(cmd, cb) {
 var err = null, res = null;
@@ -591,16 +600,16 @@ setTimeout(function() { cb(err, res); }, 0);
 
 
 function enterEditMode() {
-zzdbg.info("Editor mode: use .a to apply changes to main document");
+zzdbg.info('Editor mode: use .a to apply changes to main document');
 zzdbg.eval = function(src, cb) {
-sendWindowRequest(w.opener, "eval", cmd, function(res) {});
+sendWindowRequest(w.opener, 'eval', cmd, function(res) {});
 };
 if(!zzdbg.editor) {
-zzdbg.filename = w.zzdbg_filename || urlBasename(w.location.href) || "untitled";
-zzdbg.editor = d.createElement("textarea");
-zzdbg.editor.className = "zzeditor";
-d.title = "zzdbg source view for "+zzdbg.filename;
-var pre = d.querySelector("pre") || d.body.childNodes[0];
+zzdbg.filename = w.zzdbg_filename || urlBasename(w.location.href) || 'untitled';
+zzdbg.editor = d.createElement('textarea');
+zzdbg.editor.className = 'zzeditor';
+d.title = 'zzdbg source view for '+zzdbg.filename;
+var pre = d.querySelector('pre') || d.body.childNodes[0];
 zzdbg.editor.value = pre.textContent;
 pre.replaceWith(zzdbg.editor);
 }
@@ -612,7 +621,7 @@ if(/^zzdbg-editor/.test(w.name)) enterEditMode();
 function sendWindowRequest(window, type, payload, cb) {
 var id = resHandlers.length;
 resHandlers[id] = cb;
-window.postMessage({ zzdbg_msg:{ dir:"req", type:type, payload:payload, id:id } }, "*");
+window.postMessage({ zzdbg_msg:{ dir:'req', type:type, payload:payload, id:id } }, '*');
 }
 function messageListener(ev) {
 var win = ev.source;
@@ -621,25 +630,26 @@ var dir = msg.dir;
 var type = msg.type;
 var payload = msg.payload;
 var id = msg.id;
-if("req" == dir && has(reqHandlers, type)) reqHandlers[type](win, payload, sendRes);
-if("res" == dir && id < resHandlers.length && "function" == typeof resHandlers[id]) { resHandlers[id](payload); delete resHandlers[id]; }
+if('req' == dir && has(reqHandlers, type)) reqHandlers[type](win, payload, sendRes);
+if('res' == dir && id < resHandlers.length && 'function' == typeof resHandlers[id]) { resHandlers[id](payload); delete resHandlers[id]; }
 function sendRes(payload) {
-win.postMessage({ zzdbg_msg:{ dir:"res", type:type, payload:payload, id:id } }, ev.origin);
+win.postMessage({ zzdbg_msg:{ dir:'res', type:type, payload:payload, id:id } }, ev.origin);
 }
 }
-w.addEventListener("message", messageListener, true);
+w.addEventListener('message', messageListener);
 
+function fullscreenchange() { zzdbg.ui.remove(); (d.fullscreenElement||d.body).appendChild(zzdbg.ui); }
+d.addEventListener('fullscreenchange', fullscreenchange);
 
-zzdbg.doc = "Commands:"+
-"\n\t.h - help"+
-"\n\t.q - quit"+
-"\n\t.c - clear output"+
-"\n\t.o (expr) - open/view source"+
-"\n\t.d (expr) - MDN doc"+
-"\n\t.p (expr) - list properties"+
-"\n\t.e - select element"+
-"\n\t.a - apply changes to main document (editor mode)"+
-"\n\t.s (filename) - save file (editor mode)"+
-"";
+zzdbg.doc = 'Commands:'+
+'\n.h - help'+
+'\n.q - quit'+
+'\n.c - clear output'+
+'\n.o (expr) - open/view source'+
+'\n.d (expr) - MDN doc'+
+'\n.e - select element'+
+'\n.a - apply changes to main document (editor mode)'+
+'\n.s (filename) - save file (editor mode)'+
+'';
 input.focus();
 })();
